@@ -6,6 +6,14 @@ enum class OrderStatus {
     INTAKE, WASHING, DRYING, FOLDING, READY, DELIVERED
 }
 
+enum class DeliveryMethod {
+    PICKUP, DELIVERY
+}
+
+enum class PaymentStatus {
+    PENDING, PAID, PARTIAL
+}
+
 @Serializable
 data class ServiceItem(
     val name: String,
@@ -24,6 +32,8 @@ data class Order(
     val totalAmount: Double,
     val paidAmount: Double,
     val status: OrderStatus,
+    val deliveryMethod: DeliveryMethod = DeliveryMethod.PICKUP,
+    val paymentStatus: PaymentStatus = PaymentStatus.PENDING,
     val intakePhotos: List<String>,
     val machineId: String?,
     val staffId: String,
@@ -38,7 +48,9 @@ data class Machine(
     val type: String,
     val capacityKg: Double,
     val status: String,
-    val lastMaintenanceDate: Long
+    val lastMaintenanceDate: Long,
+    val endTime: Long? = null,
+    val cyclesCount: Int = 0
 )
 
 data class Inventory(
@@ -48,4 +60,13 @@ data class Inventory(
     val currentStock: Double,
     val unit: String,
     val lowStockThreshold: Double
+)
+
+data class Shop(
+    val shopId: String,
+    val name: String,
+    val address: String,
+    val ownerId: String,
+    val settings: Map<String, String>,
+    val createdAt: Long
 )

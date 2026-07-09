@@ -23,7 +23,9 @@ data class MachineEntity(
     val type: String,
     val capacityKg: Double,
     val status: String,
-    val lastMaintenanceDate: Long
+    val lastMaintenanceDate: Long,
+    val endTime: Long? = null,
+    val cyclesCount: Int = 0
 )
 
 @Entity(tableName = "orders")
@@ -36,6 +38,8 @@ data class OrderEntity(
     val totalAmount: Double,
     val paidAmount: Double,
     val status: OrderStatus,
+    val deliveryMethod: com.aesprt.foldgo.domain.model.DeliveryMethod,
+    val paymentStatus: com.aesprt.foldgo.domain.model.PaymentStatus,
     val intakePhotosJson: String?,
     val machineId: String?,
     val staffId: String,

@@ -9,7 +9,9 @@ fun MachineEntity.toDomain() = Machine(
     type = type,
     capacityKg = capacityKg,
     status = status,
-    lastMaintenanceDate = lastMaintenanceDate
+    lastMaintenanceDate = lastMaintenanceDate,
+    endTime = endTime,
+    cyclesCount = cyclesCount
 )
 
 fun Machine.toEntity() = MachineEntity(
@@ -19,5 +21,7 @@ fun Machine.toEntity() = MachineEntity(
     type = type,
     capacityKg = capacityKg,
     status = status,
-    lastMaintenanceDate = lastMaintenanceDate
+    lastMaintenanceDate = lastMaintenanceDate,
+    endTime = endTime,
+    cyclesCount = cyclesCount
 )

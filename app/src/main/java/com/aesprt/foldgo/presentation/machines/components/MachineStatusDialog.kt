@@ -3,11 +3,9 @@ package com.aesprt.foldgo.presentation.machines.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Block
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,56 +13,157 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.Order
 
 @Composable
 fun MachineStatusDialog(
     machine: Machine,
+    activeOrders: List<Order>,
     onDismiss: () -> Unit,
-    onStatusChange: (String) -> Unit
+    onStatusChange: (String) -> Unit,
+    onStartCycle: (Int, String?) -> Unit,
+    onFinishCycle: () -> Unit
 ) {
+    var showStartCycleConfig by remember { mutableStateOf(false) }
+    var selectedOrderId by remember { mutableStateOf<String?>(null) }
+    var duration by remember { mutableStateOf("30") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { 
             Text(
-                text = "Update Status: ${machine.name}",
+                text = if (showStartCycleConfig) "Start Cycle: ${machine.name}" else "Update Status: ${machine.name}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             ) 
         },
         text = {
-            Column(
-                modifier = Modifier.padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatusOption(
-                    title = "Set to Idle",
-                    subtitle = "Available for new orders",
-                    icon = Icons.Rounded.CheckCircle,
-                    color = Color(0xFF4CAF50),
-                    onClick = { onStatusChange("IDLE") }
+            if (showStartCycleConfig) {
+                StartCycleConfig(
+                    activeOrders = activeOrders,
+                    selectedOrderId = selectedOrderId,
+                    onOrderSelected = { selectedOrderId = it },
+                    duration = duration,
+                    onDurationChange = { duration = it }
                 )
-                StatusOption(
-                    title = "Set to Busy",
-                    subtitle = "Currently running a cycle",
-                    icon = Icons.Rounded.PlayArrow,
-                    color = Color(0xFF03A9F4),
-                    onClick = { onStatusChange("BUSY") }
-                )
-                StatusOption(
-                    title = "Out of Order",
-                    subtitle = "Requires maintenance",
-                    icon = Icons.Rounded.Block,
-                    color = Color(0xFFF44336),
-                    onClick = { onStatusChange("OUT_OF_ORDER") }
-                )
+            } else {
+                Column(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (machine.status == "BUSY") {
+                        StatusOption(
+                            title = "Finish Cycle",
+                            subtitle = "Complete current operation",
+                            icon = Icons.Rounded.CheckCircle,
+                            color = Color(0xFF4CAF50),
+                            onClick = onFinishCycle
+                        )
+                    } else {
+                        StatusOption(
+                            title = "Set to Idle",
+                            subtitle = "Available for new orders",
+                            icon = Icons.Rounded.CheckCircle,
+                            color = Color(0xFF4CAF50),
+                            onClick = { onStatusChange("IDLE") }
+                        )
+                        StatusOption(
+                            title = "Start Cycle",
+                            subtitle = "Begin washing or drying",
+                            icon = Icons.Rounded.PlayArrow,
+                            color = Color(0xFF03A9F4),
+                            onClick = { showStartCycleConfig = true }
+                        )
+                    }
+                    StatusOption(
+                        title = "Out of Order",
+                        subtitle = "Requires maintenance",
+                        icon = Icons.Rounded.Block,
+                        color = Color(0xFFF44336),
+                        onClick = { onStatusChange("OUT_OF_ORDER") }
+                    )
+                }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            if (showStartCycleConfig) {
+                Button(
+                    onClick = { onStartCycle(duration.toIntOrNull() ?: 30, selectedOrderId) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Start")
+                }
+            }
+        },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = if (showStartCycleConfig) { { showStartCycleConfig = false } } else onDismiss) { 
+                Text(if (showStartCycleConfig) "Back" else "Cancel") 
+            }
         },
         shape = RoundedCornerShape(28.dp)
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StartCycleConfig(
+    activeOrders: List<Order>,
+    selectedOrderId: String?,
+    onOrderSelected: (String?) -> Unit,
+    duration: String,
+    onDurationChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        OutlinedTextField(
+            value = duration,
+            onValueChange = onDurationChange,
+            label = { Text("Duration (minutes)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        var expanded by remember { mutableStateOf(false) }
+        val selectedOrder = activeOrders.find { it.orderId == selectedOrderId }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            OutlinedTextField(
+                value = selectedOrder?.orderNumber ?: "Select Order (Optional)",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Associated Order") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("None") },
+                    onClick = {
+                        onOrderSelected(null)
+                        expanded = false
+                    }
+                )
+                activeOrders.forEach { order ->
+                    DropdownMenuItem(
+                        text = { Text("${order.orderNumber} - ${order.totalAmount}") },
+                        onClick = {
+                            onOrderSelected(order.orderId)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

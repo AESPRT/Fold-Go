@@ -2,12 +2,16 @@ package com.aesprt.foldgo.presentation.order
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aesprt.foldgo.data.local.PreferenceManager
+import com.aesprt.foldgo.domain.model.DeliveryMethod
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.PaymentStatus
 import com.aesprt.foldgo.domain.model.ServiceItem
 import com.aesprt.foldgo.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -24,7 +28,8 @@ data class OrderEntryUiState(
 }
 
 class OrderEntryViewModel(
-    private val repository: OrderRepository
+    private val repository: OrderRepository,
+    private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OrderEntryUiState())
@@ -63,15 +68,18 @@ class OrderEntryViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             try {
+                val shopId = preferenceManager.currentShopId.first() ?: "default_shop"
                 val order = Order(
                     orderId = UUID.randomUUID().toString(),
-                    shopId = "default_shop", // TODO: Get from Auth/Session
+                    shopId = shopId,
                     customerId = "cust_${currentState.phoneNumber}",
                     orderNumber = "FG-${System.currentTimeMillis().toString().takeLast(4)}",
                     items = currentState.selectedItems,
                     totalAmount = currentState.totalAmount,
                     paidAmount = 0.0,
                     status = OrderStatus.INTAKE,
+                    deliveryMethod = DeliveryMethod.PICKUP,
+                    paymentStatus = PaymentStatus.PENDING,
                     intakePhotos = emptyList(),
                     machineId = null,
                     staffId = "staff_01",

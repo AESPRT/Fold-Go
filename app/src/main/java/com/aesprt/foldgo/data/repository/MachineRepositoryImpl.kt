@@ -24,4 +24,13 @@ class MachineRepositoryImpl(
     override suspend fun updateMachineStatus(machineId: String, status: String) {
         machineDao.updateMachineStatus(machineId, status)
     }
+
+    override suspend fun startMachineCycle(machineId: String, durationMinutes: Int) {
+        val endTime = System.currentTimeMillis() + (durationMinutes * 60 * 1000)
+        machineDao.startCycle(machineId, endTime)
+    }
+
+    override suspend fun finishMachineCycle(machineId: String) {
+        machineDao.finishCycle(machineId)
+    }
 }

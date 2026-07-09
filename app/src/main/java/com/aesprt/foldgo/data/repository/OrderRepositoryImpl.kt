@@ -22,7 +22,7 @@ class OrderRepositoryImpl(
         return orderDao.getOrderById(orderId).map { it?.toDomain() }
     }
 
-    override fun suspend fun upsertOrder(order: Order) {
+    override suspend fun upsertOrder(order: Order) {
         orderDao.upsertOrder(order.toEntity())
     }
 

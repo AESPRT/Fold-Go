@@ -8,8 +8,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 
 @Composable
 fun OrderCard(
@@ -43,7 +46,7 @@ fun OrderCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Total: $${order.totalAmount}",
+                text = "Total: ${PriceFormatter.format(order.totalAmount)}",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -79,5 +82,44 @@ fun StatusChip(status: OrderStatus) {
             style = MaterialTheme.typography.labelSmall,
             color = Color.White
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun OrderCardPreview() {
+    FoldGoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            OrderCard(
+                order = Order(
+                    orderId = "1",
+                    shopId = "shop1",
+                    customerId = "cust1",
+                    orderNumber = "FG-1024",
+                    items = emptyList(),
+                    totalAmount = 25.0,
+                    paidAmount = 0.0,
+                    status = OrderStatus.INTAKE,
+                    intakePhotos = emptyList(),
+                    machineId = null,
+                    staffId = "staff1",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis()
+                ),
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun StatusChipPreview() {
+    FoldGoTheme {
+        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatusChip(status = OrderStatus.INTAKE)
+            StatusChip(status = OrderStatus.WASHING)
+            StatusChip(status = OrderStatus.READY)
+        }
     }
 }

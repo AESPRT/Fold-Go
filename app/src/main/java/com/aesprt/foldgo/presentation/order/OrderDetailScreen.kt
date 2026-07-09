@@ -1,11 +1,9 @@
 package com.aesprt.foldgo.presentation.order
 
-import androidx.compose.animation.*
+import android.annotation.SuppressLint
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -23,16 +20,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aesprt.foldgo.core.util.PriceFormatter
+import com.aesprt.foldgo.domain.model.DeliveryMethod
+import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
-import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +64,9 @@ fun OrderDetailScreen(
                 } else if (uiState.order != null) {
                     OrderDetailContent(
                         order = uiState.order!!,
-                        machine = uiState.machine
+                        machine = uiState.machine,
+                        onReady = viewModel::updateOrderPaymentAndDelivery,
+                        onDelivered = viewModel::markAsDelivered
                     )
                 } else {
                     Text("Order not found", modifier = Modifier.align(Alignment.Center))
@@ -77,7 +79,9 @@ fun OrderDetailScreen(
 @Composable
 fun OrderDetailContent(
     order: Order,
-    machine: com.aesprt.foldgo.domain.model.Machine?
+    machine: Machine?,
+    onReady: (DeliveryMethod, Double) -> Unit,
+    onDelivered: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -96,6 +100,16 @@ fun OrderDetailContent(
 
         item {
             OrderInfoCard(order)
+        }
+
+        if (order.status == OrderStatus.FOLDING || order.status == OrderStatus.READY) {
+            item {
+                StatusActionCard(
+                    status = order.status,
+                    onReady = onReady,
+                    onDelivered = onDelivered
+                )
+            }
         }
 
         item {
@@ -154,7 +168,7 @@ fun OrderHeader(order: Order) {
 @Composable
 fun ActiveCycleCard(
     order: Order,
-    machine: com.aesprt.foldgo.domain.model.Machine?
+    machine: Machine?
 ) {
     val statusColor = getStatusColor(order.status)
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
@@ -169,7 +183,7 @@ fun ActiveCycleCard(
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -219,13 +233,14 @@ fun ActiveCycleCard(
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun RemainingTimer(endTime: Long, color: Color) {
-    var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     
     LaunchedEffect(Unit) {
         while (currentTime < endTime) {
-            delay(1000)
+            delay(1000.milliseconds)
             currentTime = System.currentTimeMillis()
         }
     }
@@ -269,7 +284,11 @@ fun OrderInfoCard(order: Order) {
             InfoRow(Icons.Rounded.Person, "Customer ID", order.customerId)
             InfoRow(Icons.Rounded.Phone, "Staff ID", order.staffId)
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), alpha = 0.5f)
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
             
             Text(
                 "Payment Summary",
@@ -334,7 +353,124 @@ fun ItemsListCard(order: Order) {
                         )
                     }
                     if (index < order.items.size - 1) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), alpha = 0.3f)
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StatusActionCard(
+    status: OrderStatus,
+    onReady: (DeliveryMethod, Double) -> Unit,
+    onDelivered: () -> Unit
+) {
+    var showPaymentDialog by remember { mutableStateOf(false) }
+    var deliveryMethod by remember { mutableStateOf(DeliveryMethod.PICKUP) }
+    var amountPaid by remember { mutableStateOf("") }
+
+    val nextStatus = when (status) {
+        OrderStatus.FOLDING -> OrderStatus.READY
+        OrderStatus.READY -> OrderStatus.DELIVERED
+        else -> null
+    }
+
+    if (nextStatus != null) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (nextStatus == OrderStatus.READY) Icons.Rounded.CheckCircle else Icons.Rounded.DoneAll,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (nextStatus == OrderStatus.READY) "Finish Folding?" else "Mark as Delivered?",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (nextStatus == OrderStatus.READY) "Collect payment and set delivery" else "Mark order as completed",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Button(
+                        onClick = { 
+                            if (nextStatus == OrderStatus.READY) showPaymentDialog = true
+                            else onDelivered()
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Proceed")
+                    }
+                }
+
+                if (showPaymentDialog) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Delivery Method", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = deliveryMethod == DeliveryMethod.PICKUP,
+                            onClick = { deliveryMethod = DeliveryMethod.PICKUP },
+                            label = { Text("Pickup") }
+                        )
+                        FilterChip(
+                            selected = deliveryMethod == DeliveryMethod.DELIVERY,
+                            onClick = { deliveryMethod = DeliveryMethod.DELIVERY },
+                            label = { Text("Delivery") }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedTextField(
+                        value = amountPaid,
+                        onValueChange = { amountPaid = it },
+                        label = { Text("Amount Paid") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            val amount = amountPaid.toDoubleOrNull() ?: 0.0
+                            onReady(deliveryMethod, amount)
+                            showPaymentDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Confirm Ready")
                     }
                 }
             }

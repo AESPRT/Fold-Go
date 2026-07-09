@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.LocalLaundryService
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.Inventory
+import androidx.compose.material.icons.rounded.LocalLaundryService
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,16 +16,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.aesprt.foldgo.ui.navigation.DashboardRoute
+import com.aesprt.foldgo.ui.navigation.InventoryRoute
+import com.aesprt.foldgo.ui.navigation.MachineMatrixRoute
+import com.aesprt.foldgo.ui.navigation.SettingsRoute
 
 sealed class BottomNavItem(
     val route: Any,
     val title: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val routeName: String
 ) {
-    object Dashboard : BottomNavItem("dashboard", "Dashboard", Icons.Default.Dashboard)
-    object Machines : BottomNavItem("machines", "Machines", Icons.Default.LocalLaundryService)
-    object Inventory : BottomNavItem("inventory", "Inventory", Icons.Default.Inventory)
-    object Settings : BottomNavItem("settings", "Settings", Icons.Default.Settings)
+    object Dashboard : BottomNavItem(DashboardRoute, "Dashboard", Icons.Rounded.Dashboard, "DashboardRoute")
+    object Machines : BottomNavItem(MachineMatrixRoute, "Machines", Icons.Rounded.LocalLaundryService, "MachineMatrixRoute")
+    object Inventory : BottomNavItem(InventoryRoute, "Inventory", Icons.Rounded.Inventory, "InventoryRoute")
+    object Settings : BottomNavItem(SettingsRoute, "Settings", Icons.Rounded.Settings, "SettingsRoute")
 }
 
 @Composable
@@ -55,7 +60,7 @@ fun FoldGoBottomBar(
             tonalElevation = 0.dp
         ) {
             items.forEach { item ->
-                val isSelected = currentRoute?.contains(item.title, ignoreCase = true) == true
+                val isSelected = currentRoute?.contains(item.routeName, ignoreCase = true) == true
                 NavigationBarItem(
                     selected = isSelected,
                     onClick = { onNavigate(item.route) },

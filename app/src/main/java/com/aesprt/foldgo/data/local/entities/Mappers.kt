@@ -2,8 +2,36 @@ package com.aesprt.foldgo.data.local.entities
 
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.ServiceItem
+import com.aesprt.foldgo.domain.model.Shop
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+
+fun ShopEntity.toDomain(): Shop {
+    val settingsMap = try {
+        Json.decodeFromString<Map<String, String>>(settings)
+    } catch (e: Exception) {
+        emptyMap()
+    }
+    return Shop(
+        shopId = shopId,
+        name = name,
+        address = address,
+        ownerId = ownerId,
+        settings = settingsMap,
+        createdAt = createdAt
+    )
+}
+
+fun Shop.toEntity(): ShopEntity {
+    return ShopEntity(
+        shopId = shopId,
+        name = name,
+        address = address,
+        ownerId = ownerId,
+        settings = Json.encodeToString(settings),
+        createdAt = createdAt
+    )
+}
 
 fun OrderEntity.toDomain(): Order {
     val items = try {
@@ -26,6 +54,8 @@ fun OrderEntity.toDomain(): Order {
         totalAmount = totalAmount,
         paidAmount = paidAmount,
         status = status,
+        deliveryMethod = deliveryMethod,
+        paymentStatus = paymentStatus,
         intakePhotos = photos,
         machineId = machineId,
         staffId = staffId,
@@ -44,6 +74,8 @@ fun Order.toEntity(isSynced: Boolean = false): OrderEntity {
         totalAmount = totalAmount,
         paidAmount = paidAmount,
         status = status,
+        deliveryMethod = deliveryMethod,
+        paymentStatus = paymentStatus,
         intakePhotosJson = Json.encodeToString(intakePhotos),
         machineId = machineId,
         staffId = staffId,

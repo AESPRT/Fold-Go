@@ -9,9 +9,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import com.aesprt.foldgo.ui.theme.DeepOceanBlue
-import com.aesprt.foldgo.ui.theme.MintGreen
 
 @Composable
 fun ModernBackground(
@@ -19,24 +16,21 @@ fun ModernBackground(
     content: @Composable BoxScope.() -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
+    val colorScheme = MaterialTheme.colorScheme
     
-    val backgroundColor = if (isDark) {
-        MaterialTheme.colorScheme.background
-    } else {
-        Color.White
-    }
+    val backgroundColor = colorScheme.background
 
     val gradientColors = if (isDark) {
         listOf(
-            DeepOceanBlue.copy(alpha = 0.15f),
+            colorScheme.primary.copy(alpha = 0.15f),
             backgroundColor,
-            MintGreen.copy(alpha = 0.1f)
+            colorScheme.secondary.copy(alpha = 0.1f)
         )
     } else {
         listOf(
-            DeepOceanBlue.copy(alpha = 0.08f),
+            colorScheme.primary.copy(alpha = 0.08f),
             backgroundColor,
-            MintGreen.copy(alpha = 0.05f)
+            colorScheme.secondary.copy(alpha = 0.05f)
         )
     }
 
