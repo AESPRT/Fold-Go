@@ -13,6 +13,7 @@ import com.aesprt.foldgo.domain.repository.OrderRepository
 import com.aesprt.foldgo.domain.repository.ShopRepository
 import com.aesprt.foldgo.domain.usecase.GetActiveOrdersUseCase
 import com.aesprt.foldgo.presentation.dashboard.DashboardViewModel
+import com.aesprt.foldgo.presentation.history.HistoryViewModel
 import com.aesprt.foldgo.presentation.machines.MachineViewModel
 import com.aesprt.foldgo.presentation.onboarding.OnboardingViewModel
 import com.aesprt.foldgo.presentation.order.OrderDetailViewModel
@@ -50,7 +51,8 @@ val domainModule = module {
 val presentationModule = module {
     viewModel { SplashViewModel(get(), get()) }
     viewModel { OnboardingViewModel(get()) }
-    viewModel { DashboardViewModel(get()) }
+    viewModel { DashboardViewModel(get(), get()) }
+    viewModel { HistoryViewModel(get()) }
     viewModel { OrderEntryViewModel(get(), get()) }
     viewModel { (orderId: String) -> OrderDetailViewModel(orderId, get(), get()) }
     viewModel { MachineViewModel(get(), get(), get()) }

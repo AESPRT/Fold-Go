@@ -21,6 +21,8 @@ import com.aesprt.foldgo.presentation.components.MachineCard
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.components.SummaryCard
 import com.aesprt.foldgo.presentation.machines.components.MachineFilterSection
+import com.aesprt.foldgo.domain.model.MachineStatus
+import com.aesprt.foldgo.domain.model.MachineType
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,8 +68,8 @@ fun MachineMatrixScreen(
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val washingCount = uiState.machines.count { it.status == "BUSY" && it.type == "WASHER" }
-                    val dryingCount = uiState.machines.count { it.status == "BUSY" && it.type == "DRYER" }
+                    val washingCount = uiState.machines.count { it.status == MachineStatus.BUSY && it.type == MachineType.WASHER }
+                    val dryingCount = uiState.machines.count { it.status == MachineStatus.BUSY && it.type == MachineType.DRYER }
                     
                     SummaryCard(
                         title = "Washing",
@@ -87,6 +89,7 @@ fun MachineMatrixScreen(
 
                 MachineFilterSection(
                     selectedType = uiState.filteredType,
+                    availableTypes = uiState.availableTypes,
                     onTypeSelected = viewModel::onFilterTypeChanged
                 )
 
@@ -98,7 +101,7 @@ fun MachineMatrixScreen(
                     FoldGoEmptyState(
                         message = "No machines found",
                         description = if (uiState.filteredType != null) 
-                            "No ${uiState.filteredType?.lowercase()}s are currently configured."
+                            "No ${uiState.filteredType?.name?.lowercase()}s are currently configured."
                             else "You haven't added any washing or drying machines yet.",
                         icon = Icons.Rounded.LocalLaundryService
                     )
@@ -113,7 +116,8 @@ fun MachineMatrixScreen(
                         items(uiState.machines) { machine ->
                             MachineCard(
                                 machine = machine,
-                                onClick = { onMachineClick(machine.machineId) } // Updated to navigate
+                                onClick = { onMachineClick(machine.machineId) },
+                                onTimerFinished = { viewModel.finishCycle(machine.machineId) }
                             )
                         }
                     }

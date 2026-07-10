@@ -85,7 +85,7 @@ fun FoldGoEmptyStatePreview() {
             description = "Start by creating a new order using the + button below.",
             action = {
                 Button(onClick = {}) {
-                    Text("Create First Order")
+                    Text("Create First Order", style = MaterialTheme.typography.labelLarge)
                 }
             }
         )

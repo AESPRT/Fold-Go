@@ -41,7 +41,8 @@ fun DashboardScreen(
         DashboardContent(
             uiState = uiState,
             onOrderClick = onOrderClick,
-            onNewOrderClick = onNewOrderClick
+            onNewOrderClick = onNewOrderClick,
+            onAutoFinish = viewModel::autoFinishCycle
         )
     }
 }
@@ -51,7 +52,8 @@ fun DashboardScreen(
 fun DashboardContent(
     uiState: DashboardUiState,
     onOrderClick: (String) -> Unit,
-    onNewOrderClick: () -> Unit
+    onNewOrderClick: () -> Unit,
+    onAutoFinish: (String) -> Unit
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -72,7 +74,7 @@ fun DashboardContent(
                                     contentColor = MaterialTheme.colorScheme.onError,
                                     modifier = Modifier.offset(x = (-4).dp, y = 4.dp)
                                 ) {
-                                    Text("1")
+                                    Text("1", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         ) {
@@ -167,10 +169,12 @@ fun DashboardContent(
                         )
                     }
                 } else {
-                    items(uiState.orders) { order ->
+                    items(uiState.orders) { orderWithMachine ->
                         OrderCard(
-                            order = order,
-                            onClick = { onOrderClick(order.orderId) }
+                            order = orderWithMachine.order,
+                            machine = orderWithMachine.machine,
+                            onClick = { onOrderClick(orderWithMachine.order.orderId) },
+                            onTimerFinished = { orderWithMachine.machine?.let { onAutoFinish(it.machineId) } }
                         )
                     }
                 }
@@ -186,7 +190,8 @@ fun DashboardContentLoadingPreview() {
         DashboardContent(
             uiState = DashboardUiState(isLoading = true),
             onOrderClick = {},
-            onNewOrderClick = {}
+            onNewOrderClick = {},
+            onAutoFinish = {}
         )
     }
 }
@@ -198,7 +203,8 @@ fun DashboardContentEmptyPreview() {
         DashboardContent(
             uiState = DashboardUiState(orders = emptyList()),
             onOrderClick = {},
-            onNewOrderClick = {}
+            onNewOrderClick = {},
+            onAutoFinish = {}
         )
     }
 }
@@ -210,44 +216,51 @@ fun DashboardContentPreview() {
         DashboardContent(
             uiState = DashboardUiState(
                 orders = listOf(
-                    Order(
-                        orderId = "1",
-                        shopId = "shop1",
-                        customerId = "cust1",
-                        customerName = "John Doe",
-                        customerPhone = "1234567890",
-                        orderNumber = "FG-1024",
-                        items = emptyList(),
-                        totalAmount = 25.0,
-                        paidAmount = 0.0,
-                        status = OrderStatus.INTAKE,
-                        intakePhotos = emptyList(),
-                        machineId = null,
-                        staffId = "staff1",
-                        createdAt = System.currentTimeMillis(),
-                        updatedAt = System.currentTimeMillis()
+                    OrderWithMachine(
+                        Order(
+                            orderId = "1",
+                            shopId = "shop1",
+                            customerId = "cust1",
+                            customerName = "John Doe",
+                            customerPhone = "1234567890",
+                            orderNumber = "FG-1024",
+                            items = emptyList(),
+                            totalAmount = 25.0,
+                            paidAmount = 0.0,
+                            status = OrderStatus.INTAKE,
+                            intakePhotos = emptyList(),
+                            machineId = null,
+                            staffId = "staff1",
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis()
+                        ),
+                        null
                     ),
-                    Order(
-                        orderId = "2",
-                        shopId = "shop1",
-                        customerId = "cust2",
-                        customerName = "Jane Doe",
-                        customerPhone = "9876543210",
-                        orderNumber = "FG-1025",
-                        items = emptyList(),
-                        totalAmount = 45.0,
-                        paidAmount = 45.0,
-                        status = OrderStatus.READY,
-                        intakePhotos = emptyList(),
-                        machineId = "M1",
-                        staffId = "staff1",
-                        createdAt = System.currentTimeMillis(),
-                        updatedAt = System.currentTimeMillis()
+                    OrderWithMachine(
+                        Order(
+                            orderId = "2",
+                            shopId = "shop1",
+                            customerId = "cust2",
+                            customerName = "Jane Doe",
+                            customerPhone = "9876543210",
+                            orderNumber = "FG-1025",
+                            items = emptyList(),
+                            totalAmount = 45.0,
+                            paidAmount = 45.0,
+                            status = OrderStatus.READY,
+                            intakePhotos = emptyList(),
+                            machineId = "M1",
+                            staffId = "staff1",
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis()
+                        ),
+                        null
                     )
                 )
             ),
             onOrderClick = {},
-            onNewOrderClick = {}
+            onNewOrderClick = {},
+            onAutoFinish = {}
         )
     }
 }

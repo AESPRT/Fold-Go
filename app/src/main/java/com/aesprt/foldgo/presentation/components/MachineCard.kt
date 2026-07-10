@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
@@ -13,39 +12,42 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aesprt.foldgo.core.util.MachineUtils
+import com.aesprt.foldgo.core.util.TimeUtils
 import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.MachineStatus
+import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import kotlinx.coroutines.delay
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MachineCard(
+    modifier: Modifier = Modifier,
     machine: Machine,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onTimerFinished: () -> Unit = {}
 ) {
-    var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val isMaintenanceDue = machine.cyclesCount >= 100
 
     LaunchedEffect(machine.status, machine.endTime) {
-        if (machine.status == "BUSY" && machine.endTime != null) {
+        if (machine.status == MachineStatus.BUSY && machine.endTime != null) {
             while (currentTime < machine.endTime) {
-                delay(1000)
+                delay(1000.milliseconds)
                 currentTime = System.currentTimeMillis()
             }
+            onTimerFinished()
         }
     }
 
-    val statusColor = when (machine.status) {
-        "IDLE" -> Color(0xFF4CAF50)
-        "BUSY" -> MaterialTheme.colorScheme.primary
-        "OUT_OF_ORDER" -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.outline
-    }
+    val statusColor = MachineUtils.getStatusColor(machine.status)
+    val icons = MachineUtils.getMachineIcon(machine.type)
 
     val containerColor by animateColorAsState(
         targetValue = statusColor.copy(alpha = 0.04f),
@@ -58,10 +60,10 @@ fun MachineCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = containerColor,
         ),
         border = CardDefaults.outlinedCardBorder().copy(
-            brush = androidx.compose.ui.graphics.SolidColor(statusColor.copy(alpha = 0.2f))
+            brush = SolidColor(statusColor.copy(alpha = 0.2f))
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -79,7 +81,7 @@ fun MachineCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Rounded.LocalLaundryService,
+                        imageVector = icons,
                         contentDescription = null,
                         modifier = Modifier.size(32.dp),
                         tint = statusColor
@@ -110,16 +112,14 @@ fun MachineCard(
                 }
                 
                 Text(
-                    text = "${machine.type.lowercase().replaceFirstChar { it.uppercase() }} • ${machine.capacityKg}kg",
+                    text = "${machine.type.name.lowercase().replaceFirstChar { it.uppercase() }} • ${machine.capacityKg}kg",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                if (machine.status == "BUSY" && machine.endTime != null) {
+                if (machine.status == MachineStatus.BUSY && machine.endTime != null) {
                     val remaining = machine.endTime - currentTime
                     if (remaining > 0) {
-                        val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining)
-                        val seconds = TimeUnit.MILLISECONDS.toSeconds(remaining) % 60
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(top = 4.dp),
@@ -132,7 +132,7 @@ fun MachineCard(
                                 tint = statusColor
                             )
                             Text(
-                                text = String.format("%02d:%02d remaining", minutes, seconds),
+                                text = TimeUtils.formatRemainingTime(remaining),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = statusColor,
                                 fontWeight = FontWeight.SemiBold
@@ -157,7 +157,7 @@ fun MachineCard(
                 tonalElevation = 4.dp
             ) {
                 Text(
-                    text = machine.status,
+                    text = machine.status.name,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White,
@@ -182,9 +182,9 @@ fun MachineCardPreview() {
                     machineId = "1",
                     shopId = "1",
                     name = "Washer 01",
-                    type = "WASHER",
+                    type = MachineType.WASHER,
                     capacityKg = 8.0,
-                    status = "IDLE",
+                    status = MachineStatus.IDLE,
                     lastMaintenanceDate = 0L
                 ),
                 onClick = {}
@@ -194,9 +194,9 @@ fun MachineCardPreview() {
                     machineId = "2",
                     shopId = "1",
                     name = "Dryer 02",
-                    type = "DRYER",
+                    type = MachineType.DRYER,
                     capacityKg = 10.0,
-                    status = "BUSY",
+                    status = MachineStatus.BUSY,
                     lastMaintenanceDate = 0L,
                     endTime = System.currentTimeMillis() + 600000,
                     cyclesCount = 105

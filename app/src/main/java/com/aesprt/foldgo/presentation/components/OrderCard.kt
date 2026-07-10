@@ -3,23 +3,42 @@ package com.aesprt.foldgo.presentation.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import com.aesprt.foldgo.core.util.OrderStatusUtils
 import com.aesprt.foldgo.core.util.PriceFormatter
+import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun OrderCard(
+    modifier: Modifier = Modifier,
     order: Order,
+    machine: Machine? = null,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onTimerFinished: () -> Unit = {}
 ) {
+    if (order.status == OrderStatus.WASHING || order.status == OrderStatus.DRYING) {
+        machine?.endTime?.let { endTime ->
+            LaunchedEffect(endTime) {
+                val remaining = endTime - System.currentTimeMillis()
+                if (remaining > 0) {
+                    delay(remaining.milliseconds)
+                }
+                onTimerFinished()
+            }
+        }
+    }
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -76,22 +95,8 @@ fun OrderCard(
 
 @Composable
 fun StatusChip(status: OrderStatus) {
-    val containerColor = when (status) {
-        OrderStatus.INTAKE -> Color(0xFFFFAB00)
-        OrderStatus.WASHING -> Color(0xFF03A9F4)
-        OrderStatus.WASHED -> Color(0xFF4CAF50)
-        OrderStatus.DRYING -> Color(0xFF03A9F4)
-        OrderStatus.DRIED -> Color(0xFF4CAF50)
-        OrderStatus.FOLDING -> Color(0xFF03A9F4)
-        OrderStatus.READY -> Color(0xFF4CAF50)
-        OrderStatus.DELIVERED -> Color(0xFF8BC34A)
-    }
-    
-    val text = when (status) {
-        OrderStatus.WASHED -> "READY TO DRY"
-        OrderStatus.DRIED -> "READY TO FOLD"
-        else -> status.name
-    }
+    val containerColor = OrderStatusUtils.getContainerColor(status)
+    val text = OrderStatusUtils.getDisplayName(status)
     
     Surface(
         color = containerColor,

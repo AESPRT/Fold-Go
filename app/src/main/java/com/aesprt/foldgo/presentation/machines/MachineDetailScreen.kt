@@ -16,13 +16,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.MachineStatus
+import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.machines.components.MachineStatusDialog
 import org.koin.androidx.compose.koinViewModel
-import org.koin.core.parameter.parametersOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +42,7 @@ fun MachineDetailScreen(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text(machine?.name ?: "Machine Details", fontWeight = FontWeight.Bold) },
+                    title = { Text(machine?.name ?: "Machine Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -52,7 +54,7 @@ fun MachineDetailScreen(
         ) { padding ->
             if (machine == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    if (uiState.isLoading) FoldGoLoading() else Text("Machine not found")
+                    if (uiState.isLoading) FoldGoLoading() else Text("Machine not found", style = MaterialTheme.typography.bodyLarge)
                 }
             } else {
                 Column(
@@ -64,12 +66,7 @@ fun MachineDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
                     // Status Hero Card
-                    val statusColor = when (machine.status) {
-                        "IDLE" -> Color(0xFF4CAF50)
-                        "BUSY" -> MaterialTheme.colorScheme.primary
-                        "OUT_OF_ORDER" -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.outline
-                    }
+                    val statusColor = MachineUtils.getStatusColor(machine.status)
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -87,7 +84,7 @@ fun MachineDetailScreen(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = if (machine.type == "WASHER") Icons.Rounded.LocalLaundryService else Icons.Rounded.Air,
+                                        imageVector = MachineUtils.getMachineIcon(machine.type),
                                         contentDescription = null,
                                         tint = Color.White,
                                         modifier = Modifier.size(32.dp)
@@ -96,8 +93,8 @@ fun MachineDetailScreen(
                             }
                             Spacer(modifier = Modifier.width(20.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(machine.status, fontWeight = FontWeight.Black, color = statusColor, letterSpacing = 1.sp)
-                                Text("${machine.type} • ${machine.capacityKg}kg", style = MaterialTheme.typography.bodyMedium)
+                                Text(machine.status.name, fontWeight = FontWeight.Black, color = statusColor, letterSpacing = 1.sp)
+                                Text("${machine.type.name} • ${machine.capacityKg}kg", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -132,18 +129,18 @@ fun MachineDetailScreen(
                     ) {
                         Icon(Icons.Rounded.Settings, null)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Update Status or Start Cycle", fontWeight = FontWeight.Bold)
+                        Text("Update Status or Start Cycle", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
 
                     OutlinedButton(
-                        onClick = { /* Maintenance Logic */ },
+                        onClick = { viewModel.updateStatus(machineId, MachineStatus.OUT_OF_ORDER) },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
                         Icon(Icons.Rounded.Warning, null)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Mark Out of Order", fontWeight = FontWeight.Bold)
+                        Text("Mark Out of Order", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -155,7 +152,10 @@ fun MachineDetailScreen(
             machine = machine,
             activeOrders = uiState.activeOrders,
             onDismiss = { showStatusDialog = false },
-            onStatusChange = { viewModel.updateStatus(machineId, it); showStatusDialog = false },
+            onStatusChange = { status ->
+                viewModel.updateStatus(machineId, MachineStatus.valueOf(status))
+                showStatusDialog = false 
+            },
             onStartCycle = { duration, orderId -> viewModel.startCycle(machineId, duration, orderId); showStatusDialog = false },
             onFinishCycle = { viewModel.finishCycle(machineId); showStatusDialog = false }
         )

@@ -63,7 +63,7 @@ fun ShopRegistrationScreen(
                 OutlinedTextField(
                     value = uiState.shopName,
                     onValueChange = viewModel::onShopNameChange,
-                    label = { Text("Shop Name") },
+                    label = { Text("Shop Name", style = MaterialTheme.typography.bodyMedium) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     leadingIcon = { Icon(Icons.Rounded.Store, null) }
@@ -74,7 +74,7 @@ fun ShopRegistrationScreen(
                 OutlinedTextField(
                     value = uiState.address,
                     onValueChange = viewModel::onAddressChange,
-                    label = { Text("Shop Address") },
+                    label = { Text("Shop Address", style = MaterialTheme.typography.bodyMedium) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -84,7 +84,7 @@ fun ShopRegistrationScreen(
                 OutlinedTextField(
                     value = uiState.ownerName,
                     onValueChange = viewModel::onOwnerNameChange,
-                    label = { Text("Owner Name") },
+                    label = { Text("Owner Name", style = MaterialTheme.typography.bodyMedium) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -107,6 +107,7 @@ fun ShopRegistrationScreen(
                 if (uiState.error != null) {
                     Text(
                         text = uiState.error!!,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 16.dp)
                     )

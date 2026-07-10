@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
                 val menuRoutes = listOf(
                     DashboardRoute::class.qualifiedName,
                     MachineMatrixRoute::class.qualifiedName,
-                    InventoryRoute::class.qualifiedName,
+                    HistoryRoute::class.qualifiedName,
                     SettingsRoute::class.qualifiedName
                 )
                 

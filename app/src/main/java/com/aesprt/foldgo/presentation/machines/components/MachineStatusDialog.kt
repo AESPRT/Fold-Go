@@ -12,7 +12,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.MachineStatus
+import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
 
@@ -53,7 +56,7 @@ fun MachineStatusDialog(
                     modifier = Modifier.padding(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (machine.status == "BUSY") {
+                    if (machine.status == MachineStatus.BUSY) {
                         StatusOption(
                             title = "Finish Cycle",
                             subtitle = "Complete current operation",
@@ -67,7 +70,7 @@ fun MachineStatusDialog(
                             subtitle = "Available for new orders",
                             icon = Icons.Rounded.CheckCircle,
                             color = Color(0xFF4CAF50),
-                            onClick = { onStatusChange("IDLE") }
+                            onClick = { onStatusChange(MachineStatus.IDLE.name) }
                         )
                         StatusOption(
                             title = "Start Cycle",
@@ -82,7 +85,7 @@ fun MachineStatusDialog(
                         subtitle = "Requires maintenance",
                         icon = Icons.Rounded.Block,
                         color = Color(0xFFF44336),
-                        onClick = { onStatusChange("OUT_OF_ORDER") }
+                        onClick = { onStatusChange(MachineStatus.OUT_OF_ORDER.name) }
                     )
                 }
             }
@@ -93,13 +96,21 @@ fun MachineStatusDialog(
                     onClick = { onStartCycle(duration.toIntOrNull() ?: 30, selectedOrderId) },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Start")
+                    Text(
+                        text = "Start",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = if (showStartCycleConfig) { { showStartCycleConfig = false } } else onDismiss) { 
-                Text(if (showStartCycleConfig) "Back" else "Cancel") 
+                Text(
+                    text = if (showStartCycleConfig) "Back" else "Cancel",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         shape = RoundedCornerShape(28.dp)
@@ -109,7 +120,7 @@ fun MachineStatusDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StartCycleConfig(
-    machineType: String,
+    machineType: MachineType,
     activeOrders: List<Order>,
     selectedOrderId: String?,
     onOrderSelected: (String?) -> Unit,
@@ -123,7 +134,7 @@ private fun StartCycleConfig(
         OutlinedTextField(
             value = duration,
             onValueChange = onDurationChange,
-            label = { Text("Duration (minutes)") },
+            label = { Text("Duration (minutes)", style = MaterialTheme.typography.bodyMedium) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp)
         )
@@ -134,8 +145,9 @@ private fun StartCycleConfig(
         // Filter orders based on machine type and current status
         val validOrders = activeOrders.filter { order ->
             when (machineType) {
-                "WASHER" -> order.status == OrderStatus.INTAKE
-                "DRYER" -> order.status == OrderStatus.WASHED
+                MachineType.WASHER -> order.status == OrderStatus.INTAKE
+                MachineType.DRYER -> order.status == OrderStatus.WASHED
+                MachineType.IRON -> order.status == OrderStatus.DRIED
                 else -> false
             }
         }
@@ -148,9 +160,12 @@ private fun StartCycleConfig(
                 value = selectedOrder?.orderNumber ?: "Select Order (Optional)",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Associated Order") },
+                label = { Text("Associated Order", style = MaterialTheme.typography.bodyMedium) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                modifier = Modifier.menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryEditable, // Use PrimaryNotEditable if it's a read-only dropdown
+                    enabled = true
+                ).fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
             ExposedDropdownMenu(
@@ -158,7 +173,7 @@ private fun StartCycleConfig(
                 onDismissRequest = { expanded = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("None") },
+                    text = { Text("None", style = MaterialTheme.typography.bodyLarge) },
                     onClick = {
                         onOrderSelected(null)
                         expanded = false
@@ -166,7 +181,7 @@ private fun StartCycleConfig(
                 )
                 validOrders.forEach { order ->
                     DropdownMenuItem(
-                        text = { Text("${order.orderNumber} - ${order.customerName}") },
+                        text = { Text("${order.orderNumber} - ${order.customerName}", style = MaterialTheme.typography.bodyLarge) },
                         onClick = {
                             onOrderSelected(order.orderId)
                             expanded = false
@@ -178,7 +193,8 @@ private fun StartCycleConfig(
                     DropdownMenuItem(
                         text = { 
                             Text(
-                                if (machineType == "WASHER") "No Intake Orders" else "No Washed Orders",
+                                MachineUtils.getMachineSelectionMenuMessage(machineType),
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.outline
                             ) 
                         },

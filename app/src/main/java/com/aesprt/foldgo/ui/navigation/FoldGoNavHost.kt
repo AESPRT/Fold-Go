@@ -6,7 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.aesprt.foldgo.presentation.dashboard.DashboardScreen
-import com.aesprt.foldgo.presentation.inventory.InventoryScreen
+import com.aesprt.foldgo.presentation.history.HistoryScreen
 import com.aesprt.foldgo.presentation.machines.AddMachineScreen
 import com.aesprt.foldgo.presentation.machines.MachineDetailScreen
 import com.aesprt.foldgo.presentation.machines.MachineMatrixScreen
@@ -46,7 +46,7 @@ object NewMachineRoute
 object MachineMatrixRoute
 
 @Serializable
-object InventoryRoute
+object HistoryRoute
 
 @Serializable
 object SettingsRoute
@@ -143,8 +143,12 @@ fun FoldGoNavHost(
             )
         }
 
-        composable<InventoryRoute> {
-            InventoryScreen()
+        composable<HistoryRoute> {
+            HistoryScreen(
+                onOrderClick = { orderId ->
+                    navController.navigate(OrderDetailRoute(orderId))
+                }
+            )
         }
 
         composable<SettingsRoute> {

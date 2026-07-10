@@ -19,9 +19,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aesprt.foldgo.core.util.DateFormatterUtils.formatDate
 import com.aesprt.foldgo.core.util.PriceFormatter
+import com.aesprt.foldgo.core.util.OrderStatusUtils
 import com.aesprt.foldgo.domain.model.DeliveryMethod
 import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.MachineStatus
+import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
@@ -29,8 +33,6 @@ import com.aesprt.foldgo.presentation.components.ModernBackground
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -48,7 +50,7 @@ fun OrderDetailScreen(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text("Order Details", fontWeight = FontWeight.Bold) },
+                    title = { Text("Order Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -65,12 +67,13 @@ fun OrderDetailScreen(
                     OrderDetailContent(
                         order = uiState.order!!,
                         machine = uiState.machine,
+                        allMachines = uiState.allMachines,
                         onReady = viewModel::updateOrderPaymentAndDelivery,
                         onOrderStatusClick = viewModel::updateOrderStatus,
                         onDelivered = viewModel::markAsDelivered
                     )
                 } else {
-                    Text("Order not found", modifier = Modifier.align(Alignment.Center))
+                    Text("Order not found", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.align(Alignment.Center))
                 }
             }
         }
@@ -81,6 +84,7 @@ fun OrderDetailScreen(
 fun OrderDetailContent(
     order: Order,
     machine: Machine?,
+    allMachines: List<Machine>,
     onReady: (DeliveryMethod, Double) -> Unit,
     onOrderStatusClick: (OrderStatus) -> Unit,
     onDelivered: () -> Unit
@@ -96,9 +100,10 @@ fun OrderDetailContent(
 
         if (order.status == OrderStatus.WASHING || order.status == OrderStatus.DRYING || 
             order.status == OrderStatus.WASHED || order.status == OrderStatus.DRIED ||
+            order.status == OrderStatus.IRONING || order.status == OrderStatus.IRONED ||
             order.status == OrderStatus.FOLDING) {
             item {
-                ActiveCycleCard(order, machine, onOrderStatusClick)
+                ActiveCycleCard(order, machine, allMachines, onOrderStatusClick)
             }
         }
 
@@ -129,7 +134,7 @@ fun OrderDetailContent(
 
 @Composable
 fun OrderHeader(order: Order) {
-    val statusColor = getStatusColor(order.status)
+    val statusColor = OrderStatusUtils.getContainerColor(order.status)
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -174,14 +179,19 @@ fun OrderHeader(order: Order) {
 fun ActiveCycleCard(
     order: Order,
     machine: Machine?,
+    allMachines: List<Machine>,
     onOrderStatusClick: (OrderStatus) -> Unit
 ) {
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     
     val isCycleComplete = (machine?.endTime != null && currentTime >= machine.endTime) || 
-                          order.status == OrderStatus.WASHED || order.status == OrderStatus.DRIED
+                          order.status == OrderStatus.WASHED || order.status == OrderStatus.DRIED ||
+                          order.status == OrderStatus.IRONED
     
-    val statusColor = if (isCycleComplete || order.status == OrderStatus.FOLDING) Color(0xFF4CAF50) else getStatusColor(order.status)
+    val ironMachines = allMachines.filter { it.type == MachineType.IRON }
+    val isIronAvailable = ironMachines.isNotEmpty()
+    
+    val statusColor = if (isCycleComplete || order.status == OrderStatus.FOLDING) Color(0xFF4CAF50) else OrderStatusUtils.getContainerColor(order.status)
     
     LaunchedEffect(machine?.endTime, order.status) {
         if (machine?.endTime != null && (order.status == OrderStatus.WASHING || order.status == OrderStatus.DRYING)) {
@@ -221,11 +231,7 @@ fun ActiveCycleCard(
                 ) {}
                 
                 Icon(
-                    imageVector = when(order.status) {
-                        OrderStatus.WASHING, OrderStatus.WASHED -> Icons.Rounded.LocalLaundryService
-                        OrderStatus.DRYING, OrderStatus.DRIED -> Icons.Rounded.Air
-                        else -> Icons.Rounded.Checkroom
-                    },
+                    imageVector = OrderStatusUtils.getStatusIcon(order.status),
                     contentDescription = null,
                     modifier = Modifier
                         .size(64.dp)
@@ -248,14 +254,16 @@ fun ActiveCycleCard(
             Text(
                 text = when {
                     order.status == OrderStatus.FOLDING -> "Folding in Progress"
+                    order.status == OrderStatus.IRONING -> "Ironing in Progress"
                     isCycleComplete && (order.status == OrderStatus.WASHING || order.status == OrderStatus.WASHED) -> "Ready to Dry"
-                    isCycleComplete && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED) -> "Ready to Fold"
+                    isCycleComplete && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED) -> "Ready to Fold/Iron"
                     order.status == OrderStatus.WASHING -> "Currently Washing"
+                    order.status == OrderStatus.IRONED -> "Ready to Fold"
                     else -> "Currently Drying"
                 },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = if (isCycleComplete || order.status == OrderStatus.FOLDING) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
+                color = if (isCycleComplete || order.status == OrderStatus.FOLDING || order.status == OrderStatus.IRONING) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
             )
             
             if (isCycleComplete && (order.status == OrderStatus.WASHING || order.status == OrderStatus.WASHED)) {
@@ -268,11 +276,71 @@ fun ActiveCycleCard(
                 )
             } else if (isCycleComplete && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (isIronAvailable) {
+                        Text(
+                            text = "Does this order need ironing?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Button(
+                                onClick = { onOrderStatusClick(OrderStatus.IRONED) }, // Skip ironing, go to ready to fold
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Skip to Fold", style = MaterialTheme.typography.labelLarge)
+                            }
+                            Button(
+                                onClick = { onOrderStatusClick(OrderStatus.DRIED) },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Use Iron", style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                        
+                        val availableIrons = ironMachines.filter { it.status == MachineStatus.IDLE }
+                        if (availableIrons.isNotEmpty()) {
+                            Text(
+                                text = "Available Irons: ${availableIrons.joinToString { it.name }}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF4CAF50),
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        
+                        Text(
+                            text = "To start ironing, please select an Iron in the Machine Matrix",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "Ready to be folded",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { onOrderStatusClick(OrderStatus.FOLDING) },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.PlayArrow, null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Start Folding Timer", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+            } else if (order.status == OrderStatus.IRONED) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Please proceed to folding area",
+                        text = "Ready to be folded",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -282,12 +350,12 @@ fun ActiveCycleCard(
                     ) {
                         Icon(Icons.Rounded.PlayArrow, null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Start Folding Timer")
+                        Text("Start Folding Timer", style = MaterialTheme.typography.labelLarge)
                     }
                 }
-            } else if (order.status == OrderStatus.FOLDING) {
+            } else if (order.status == OrderStatus.FOLDING || order.status == OrderStatus.IRONING) {
                  Text(
-                    text = "Tracking folding duration...",
+                    text = if (order.status == OrderStatus.FOLDING) "Tracking folding duration..." else "Tracking ironing duration...",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)
@@ -407,7 +475,7 @@ fun ItemsListCard(order: Order) {
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(item.name, fontWeight = FontWeight.Bold)
+                            Text(item.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                             Text(
                                 "${item.quantity} ${item.unit} x ${PriceFormatter.format(item.pricePerUnit)}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -416,6 +484,7 @@ fun ItemsListCard(order: Order) {
                         }
                         Text(
                             PriceFormatter.format(item.totalPrice),
+                            style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -495,7 +564,7 @@ fun StatusActionCard(
                         },
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Proceed")
+                        Text("Proceed", style = MaterialTheme.typography.labelLarge)
                     }
                 }
 
@@ -509,12 +578,12 @@ fun StatusActionCard(
                         FilterChip(
                             selected = deliveryMethod == DeliveryMethod.PICKUP,
                             onClick = { deliveryMethod = DeliveryMethod.PICKUP },
-                            label = { Text("Pickup") }
+                            label = { Text("Pickup", style = MaterialTheme.typography.labelMedium) }
                         )
                         FilterChip(
                             selected = deliveryMethod == DeliveryMethod.DELIVERY,
                             onClick = { deliveryMethod = DeliveryMethod.DELIVERY },
-                            label = { Text("Delivery") }
+                            label = { Text("Delivery", style = MaterialTheme.typography.labelMedium) }
                         )
                     }
 
@@ -534,8 +603,8 @@ fun StatusActionCard(
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
                             val finalTotal = if (deliveryMethod == DeliveryMethod.DELIVERY) order.totalAmount + deliveryFee else order.totalAmount
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Final Amount", fontWeight = FontWeight.Bold)
-                                Text(PriceFormatter.format(finalTotal), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text("Final Amount", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text(PriceFormatter.format(finalTotal), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -545,7 +614,7 @@ fun StatusActionCard(
                     OutlinedTextField(
                         value = amountPaid,
                         onValueChange = { amountPaid = it },
-                        label = { Text("Tendered Amount") },
+                        label = { Text("Tendered Amount", style = MaterialTheme.typography.bodyMedium) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                         shape = RoundedCornerShape(12.dp)
@@ -591,7 +660,7 @@ fun StatusActionCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Confirm Ready")
+                        Text("Confirm Ready", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -632,20 +701,4 @@ fun InfoRow(icon: ImageVector, label: String, value: String) {
             fontWeight = FontWeight.SemiBold
         )
     }
-}
-
-fun getStatusColor(status: OrderStatus): Color = when (status) {
-    OrderStatus.INTAKE -> Color(0xFFFFAB00)
-    OrderStatus.WASHING -> Color(0xFF03A9F4)
-    OrderStatus.WASHED -> Color(0xFF4CAF50)
-    OrderStatus.DRYING -> Color(0xFF03A9F4)
-    OrderStatus.DRIED -> Color(0xFF4CAF50)
-    OrderStatus.FOLDING -> Color(0xFF03A9F4)
-    OrderStatus.READY -> Color(0xFF4CAF50)
-    OrderStatus.DELIVERED -> Color(0xFF8BC34A)
-}
-
-fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
 }

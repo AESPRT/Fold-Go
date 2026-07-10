@@ -23,14 +23,14 @@ fun ServiceAddDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Custom Service", fontWeight = FontWeight.Bold) },
+        title = { Text("Add Custom Service", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Service Name") },
-                    placeholder = { Text("e.g. Special Wash") },
+                    label = { Text("Service Name", style = MaterialTheme.typography.bodyMedium) },
+                    placeholder = { Text("e.g. Special Wash", style = MaterialTheme.typography.bodyMedium) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -39,7 +39,7 @@ fun ServiceAddDialog(
                     OutlinedTextField(
                         value = qty,
                         onValueChange = { qty = it },
-                        label = { Text("Qty") },
+                        label = { Text("Qty", style = MaterialTheme.typography.bodyMedium) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
@@ -47,7 +47,7 @@ fun ServiceAddDialog(
                     OutlinedTextField(
                         value = unit,
                         onValueChange = { unit = it },
-                        label = { Text("Unit") },
+                        label = { Text("Unit", style = MaterialTheme.typography.bodyMedium) },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -56,8 +56,8 @@ fun ServiceAddDialog(
                 OutlinedTextField(
                     value = price,
                     onValueChange = { price = it },
-                    label = { Text("Price per Unit") },
-                    prefix = { Text("₱") },
+                    label = { Text("Price per Unit", style = MaterialTheme.typography.bodyMedium) },
+                    prefix = { Text("₱", style = MaterialTheme.typography.bodyMedium) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -76,11 +76,11 @@ fun ServiceAddDialog(
                 },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Add to Order")
+                Text("Add to Order", style = MaterialTheme.typography.labelLarge)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel", style = MaterialTheme.typography.labelLarge) }
         }
     )
 }

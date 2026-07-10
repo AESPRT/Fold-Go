@@ -2,6 +2,8 @@ package com.aesprt.foldgo.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.aesprt.foldgo.domain.model.MachineStatus
+import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
 
@@ -20,9 +22,9 @@ data class MachineEntity(
     @PrimaryKey val machineId: String,
     val shopId: String,
     val name: String,
-    val type: String,
+    val type: MachineType,
     val capacityKg: Double,
-    val status: String,
+    val status: MachineStatus,
     val lastMaintenanceDate: Long,
     val endTime: Long? = null,
     val cyclesCount: Int = 0

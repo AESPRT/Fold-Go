@@ -3,7 +3,7 @@ package com.aesprt.foldgo.domain.model
 import kotlinx.serialization.Serializable
 
 enum class OrderStatus {
-    INTAKE, WASHING, WASHED, DRYING, DRIED, FOLDING, READY, DELIVERED
+    INTAKE, WASHING, WASHED, DRYING, DRIED, IRONING, IRONED, FOLDING, READY, DELIVERED
 }
 
 enum class DeliveryMethod {
@@ -44,13 +44,21 @@ data class Order(
     val updatedAt: Long
 )
 
+enum class MachineType {
+    WASHER, DRYER, IRON, STEAMER
+}
+
+enum class MachineStatus {
+    IDLE, BUSY, OUT_OF_ORDER
+}
+
 data class Machine(
     val machineId: String,
     val shopId: String,
     val name: String,
-    val type: String,
+    val type: MachineType,
     val capacityKg: Double,
-    val status: String,
+    val status: MachineStatus,
     val lastMaintenanceDate: Long,
     val endTime: Long? = null,
     val cyclesCount: Int = 0

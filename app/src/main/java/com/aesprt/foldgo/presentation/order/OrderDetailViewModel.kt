@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 data class OrderDetailUiState(
     val order: Order? = null,
     val machine: Machine? = null,
+    val allMachines: List<Machine> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -42,6 +43,7 @@ class OrderDetailViewModel(
                 OrderDetailUiState(
                     order = order,
                     machine = machine,
+                    allMachines = machines,
                     isLoading = false
                 )
             }.collect { state ->

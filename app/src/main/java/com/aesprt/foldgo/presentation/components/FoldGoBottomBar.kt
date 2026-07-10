@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Dashboard
-import androidx.compose.material.icons.rounded.Inventory
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.ui.navigation.DashboardRoute
-import com.aesprt.foldgo.ui.navigation.InventoryRoute
+import com.aesprt.foldgo.ui.navigation.HistoryRoute
 import com.aesprt.foldgo.ui.navigation.MachineMatrixRoute
 import com.aesprt.foldgo.ui.navigation.SettingsRoute
 
@@ -29,7 +29,7 @@ sealed class BottomNavItem(
 ) {
     object Dashboard : BottomNavItem(DashboardRoute, "Dashboard", Icons.Rounded.Dashboard, "DashboardRoute")
     object Machines : BottomNavItem(MachineMatrixRoute, "Machines", Icons.Rounded.LocalLaundryService, "MachineMatrixRoute")
-    object Inventory : BottomNavItem(InventoryRoute, "Inventory", Icons.Rounded.Inventory, "InventoryRoute")
+    object History : BottomNavItem(HistoryRoute, "History", Icons.Rounded.History, "HistoryRoute")
     object Settings : BottomNavItem(SettingsRoute, "Settings", Icons.Rounded.Settings, "SettingsRoute")
 }
 
@@ -41,7 +41,7 @@ fun FoldGoBottomBar(
     val items = listOf(
         BottomNavItem.Dashboard,
         BottomNavItem.Machines,
-        BottomNavItem.Inventory,
+        BottomNavItem.History,
         BottomNavItem.Settings
     )
 

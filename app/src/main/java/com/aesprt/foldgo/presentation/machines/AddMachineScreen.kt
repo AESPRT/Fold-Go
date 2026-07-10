@@ -1,6 +1,5 @@
 package com.aesprt.foldgo.presentation.machines
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,45 +18,56 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aesprt.foldgo.core.util.MachineUtils
+import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.presentation.components.ModernBackground
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddMachineScreen(
     onNavigateBack: () -> Unit,
     viewModel: MachineViewModel = koinViewModel()
 ) {
+    AddMachineContent(
+        onNavigateBack = onNavigateBack,
+        onConfirmRegistration = { name, type, capacity ->
+            viewModel.addMachine(name, type, capacity)
+            onNavigateBack()
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun AddMachineContent(
+    onNavigateBack: () -> Unit,
+    onConfirmRegistration: (String, MachineType, Double) -> Unit
+) {
     var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("WASHER") }
+    var type by remember { mutableStateOf(MachineType.WASHER) }
     var capacity by remember { mutableStateOf("") }
     var brand by remember { mutableStateOf("") }
     var modelNumber by remember { mutableStateOf("") }
     
-    var showCustomTypeDialog by remember { mutableStateOf(false) }
-    var customType by remember { mutableStateOf("") }
-    val equipmentTypes = remember { mutableStateListOf("WASHER", "DRYER", "IRON", "STEAMER") }
+    val equipmentTypes = remember { MachineType.entries }
 
     val scrollState = rememberScrollState()
 
-    val secondaryColor = when (type) {
-        "WASHER" -> Color(0xFF03A9F4)
-        "DRYER" -> Color(0xFFFFAB00)
-        "IRON" -> Color(0xFFE91E63)
-        else -> MaterialTheme.colorScheme.primary
-    }
+    val secondaryColor = MachineUtils.getMachineTypeColor(type)
 
     ModernBackground {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                CenterAlignedTopAppBar(
+                TopAppBar(
                     title = { 
                         Text(
-                            "Register Equipment", 
-                            fontWeight = FontWeight.Black,
+                            "Register Equipment",
+                            style = MaterialTheme.typography.titleLarge,
                             letterSpacing = (-0.5).sp
                         ) 
                     },
@@ -66,29 +76,39 @@ fun AddMachineScreen(
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Unspecified,
+                        navigationIconContentColor = Color.Unspecified,
+                        titleContentColor = Color.Unspecified,
+                        actionIconContentColor = Color.Unspecified
+                    )
                 )
             },
             bottomBar = {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     tonalElevation = 8.dp,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    color = Color.Transparent
                 ) {
                     Box(modifier = Modifier.padding(24.dp).navigationBarsPadding()) {
                         Button(
                             onClick = {
                                 val cap = capacity.toDoubleOrNull() ?: 0.0
                                 if (name.isNotBlank() && cap > 0) {
-                                    viewModel.addMachine(name, type, cap)
-                                    onNavigateBack()
+                                    onConfirmRegistration(name, type, cap)
                                 }
                             },
                             enabled = name.isNotBlank() && capacity.isNotBlank(),
                             modifier = Modifier.fillMaxWidth().height(64.dp),
                             shape = RoundedCornerShape(20.dp)
                         ) {
-                            Text("Confirm Registration", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Confirm Registration",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
                         }
                     }
                 }
@@ -125,12 +145,7 @@ fun AddMachineScreen(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = when(type) {
-                                        "WASHER" -> Icons.Rounded.LocalLaundryService
-                                        "DRYER" -> Icons.Rounded.Air
-                                        "IRON" -> Icons.Rounded.Checkroom
-                                        else -> Icons.Rounded.Settings
-                                    },
+                                    imageVector = MachineUtils.getMachineIcon(type),
                                     contentDescription = null,
                                     modifier = Modifier.size(40.dp),
                                     tint = Color.White
@@ -139,33 +154,24 @@ fun AddMachineScreen(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = type.uppercase(),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Black,
-                            color = secondaryColor,
-                            letterSpacing = 2.sp
+                            text = type.name,
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                color = secondaryColor,
+                                letterSpacing = 2.sp
+                            )
                         )
                     }
                 }
 
                 // 1. Equipment Type Selection (Modern Chips)
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Equipment Category",
-                            style = MaterialTheme.typography.titleSmall,
+                    Text(
+                        "Equipment Category",
+                        style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold
                         )
-                        TextButton(onClick = { showCustomTypeDialog = true }) {
-                            Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Custom")
-                        }
-                    }
+                    )
                     
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
@@ -176,7 +182,12 @@ fun AddMachineScreen(
                             FilterChip(
                                 selected = type == item,
                                 onClick = { type = item },
-                                label = { Text(item.lowercase().replaceFirstChar { it.uppercase() }) },
+                                label = { 
+                                    Text(
+                                        item.name.lowercase().replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.labelLarge
+                                    ) 
+                                },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = secondaryColor.copy(alpha = 0.2f),
@@ -196,13 +207,13 @@ fun AddMachineScreen(
 
                 // 2. Core Specifications
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Core Specifications", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Core Specifications", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Equipment Name") },
-                        placeholder = { Text("e.g. Speed Queen 01") },
+                        label = { Text("Equipment Name", style = MaterialTheme.typography.titleSmall) },
+                        placeholder = { Text("e.g. Speed Queen 01", style = MaterialTheme.typography.titleSmall) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         leadingIcon = { Icon(Icons.Rounded.Settings, null, tint = secondaryColor) },
@@ -213,8 +224,8 @@ fun AddMachineScreen(
                         OutlinedTextField(
                             value = capacity,
                             onValueChange = { capacity = it },
-                            label = { Text("Capacity") },
-                            suffix = { Text("kg") },
+                            label = { Text("Capacity", style = MaterialTheme.typography.titleSmall) },
+                            suffix = { Text("kg", style = MaterialTheme.typography.titleSmall) },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(16.dp),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -224,8 +235,8 @@ fun AddMachineScreen(
                         OutlinedTextField(
                             value = brand,
                             onValueChange = { brand = it },
-                            label = { Text("Brand") },
-                            placeholder = { Text("e.g. LG") },
+                            label = { Text("Brand", style = MaterialTheme.typography.titleSmall) },
+                            placeholder = { Text("e.g. LG", style = MaterialTheme.typography.titleSmall) },
                             modifier = Modifier.weight(1.2f),
                             shape = RoundedCornerShape(16.dp),
                             leadingIcon = { Icon(Icons.Rounded.Factory, null, tint = secondaryColor) },
@@ -236,12 +247,12 @@ fun AddMachineScreen(
 
                 // 3. Technical Details (Optional)
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Technical Details", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Technical Details", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     
                     OutlinedTextField(
                         value = modelNumber,
                         onValueChange = { modelNumber = it },
-                        label = { Text("Model Number") },
+                        label = { Text("Model Number", style = MaterialTheme.typography.titleSmall) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         leadingIcon = { Icon(Icons.Rounded.Fingerprint, null, tint = secondaryColor) },
@@ -253,45 +264,15 @@ fun AddMachineScreen(
             }
         }
     }
+}
 
-    if (showCustomTypeDialog) {
-        AlertDialog(
-            onDismissRequest = { showCustomTypeDialog = false },
-            title = { Text("Add Custom Equipment Type") },
-            text = {
-                OutlinedTextField(
-                    value = customType,
-                    onValueChange = { customType = it },
-                    label = { Text("Type Name") },
-                    placeholder = { Text("e.g. Iron, Steamer") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (customType.isNotBlank()) {
-                            val upperType = customType.uppercase().trim()
-                            if (!equipmentTypes.contains(upperType)) {
-                                equipmentTypes.add(upperType)
-                            }
-                            type = upperType
-                            customType = ""
-                            showCustomTypeDialog = false
-                        }
-                    },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Add Type")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCustomTypeDialog = false }) {
-                    Text("Cancel")
-                }
-            }
+@Preview(showBackground = true)
+@Composable
+fun AddMachineScreenPreview() {
+    FoldGoTheme {
+        AddMachineContent(
+            onNavigateBack = {},
+            onConfirmRegistration = { _, _, _ -> }
         )
     }
 }

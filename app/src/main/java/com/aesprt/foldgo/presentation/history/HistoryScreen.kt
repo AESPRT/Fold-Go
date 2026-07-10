@@ -1,0 +1,76 @@
+package com.aesprt.foldgo.presentation.history
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
+import com.aesprt.foldgo.presentation.components.FoldGoLoading
+import com.aesprt.foldgo.presentation.components.ModernBackground
+import com.aesprt.foldgo.presentation.components.OrderCard
+import org.koin.androidx.compose.koinViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryScreen(
+    onOrderClick: (String) -> Unit,
+    viewModel: HistoryViewModel = koinViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    ModernBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { 
+                        Text(
+                            "Order History",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                    windowInsets = WindowInsets.statusBars
+                )
+            }
+        ) { padding ->
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    FoldGoLoading()
+                }
+            } else if (uiState.orders.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    FoldGoEmptyState(
+                        message = "No history found",
+                        description = "Orders will appear here once they are marked as delivered.",
+                        icon = Icons.Rounded.History
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(uiState.orders) { order ->
+                        OrderCard(
+                            order = order,
+                            onClick = { onOrderClick(order.orderId) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
