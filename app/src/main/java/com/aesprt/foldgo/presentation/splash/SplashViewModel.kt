@@ -10,6 +10,8 @@ import kotlinx.coroutines.launch
 sealed class SplashDestination {
     object Onboarding : SplashDestination()
     object ShopRegistration : SplashDestination()
+    object Login : SplashDestination()
+    object StaffSelection : SplashDestination()
     object Dashboard : SplashDestination()
 }
 
@@ -27,6 +29,16 @@ class SplashViewModel(
         val hasShop = shopRepository.hasShop()
         if (!hasShop) {
             return SplashDestination.ShopRegistration
+        }
+
+        val currentShopId = preferenceManager.currentShopId.first()
+        if (currentShopId == null) {
+            return SplashDestination.Login
+        }
+
+        val currentStaffId = preferenceManager.currentStaffId.first()
+        if (currentStaffId == null) {
+            return SplashDestination.StaffSelection
         }
 
         return SplashDestination.Dashboard

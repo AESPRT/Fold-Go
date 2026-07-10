@@ -78,6 +78,16 @@ data class Shop(
     val name: String,
     val address: String,
     val ownerId: String,
+    val pin: String,
     val settings: Map<String, String>,
+    val createdAt: Long
+)
+
+data class Staff(
+    val staffId: String,
+    val shopId: String,
+    val name: String,
+    val role: String,
+    val isActive: Boolean = true,
     val createdAt: Long
 )

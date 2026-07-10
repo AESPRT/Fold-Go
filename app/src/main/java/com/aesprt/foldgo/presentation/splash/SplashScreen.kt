@@ -23,6 +23,8 @@ import kotlin.time.Duration.Companion.milliseconds
 fun SplashScreen(
     onNavigateToOnboarding: () -> Unit,
     onNavigateToRegistration: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    onNavigateToStaffSelection: () -> Unit,
     onNavigateToDashboard: () -> Unit,
     viewModel: SplashViewModel = koinViewModel()
 ) {
@@ -38,6 +40,8 @@ fun SplashScreen(
         when (viewModel.getNextDestination()) {
             SplashDestination.Onboarding -> onNavigateToOnboarding()
             SplashDestination.ShopRegistration -> onNavigateToRegistration()
+            SplashDestination.Login -> onNavigateToLogin()
+            SplashDestination.StaffSelection -> onNavigateToStaffSelection()
             SplashDestination.Dashboard -> onNavigateToDashboard()
         }
     }
@@ -62,6 +66,8 @@ fun SplashScreenPreview() {
         SplashScreen(
             onNavigateToOnboarding = {},
             onNavigateToRegistration = {},
+            onNavigateToLogin = {},
+            onNavigateToStaffSelection = {},
             onNavigateToDashboard = {}
         )
     }

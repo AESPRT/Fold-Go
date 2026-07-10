@@ -13,7 +13,18 @@ data class ShopEntity(
     val name: String,
     val address: String,
     val ownerId: String,
+    val pin: String,
     val settings: String,
+    val createdAt: Long
+)
+
+@Entity(tableName = "staff")
+data class StaffEntity(
+    @PrimaryKey val staffId: String,
+    val shopId: String,
+    val name: String,
+    val role: String,
+    val isActive: Boolean,
     val createdAt: Long
 )
 

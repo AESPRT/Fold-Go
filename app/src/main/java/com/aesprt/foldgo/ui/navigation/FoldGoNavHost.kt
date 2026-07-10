@@ -5,6 +5,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.aesprt.foldgo.presentation.auth.LoginScreen
+import com.aesprt.foldgo.presentation.auth.StaffSelectionScreen
 import com.aesprt.foldgo.presentation.dashboard.DashboardScreen
 import com.aesprt.foldgo.presentation.history.HistoryScreen
 import com.aesprt.foldgo.presentation.machines.AddMachineScreen
@@ -26,6 +28,12 @@ object OnboardingRoute
 
 @Serializable
 object ShopRegistrationRoute
+
+@Serializable
+object LoginRoute
+
+@Serializable
+object StaffSelectionRoute
 
 @Serializable
 object DashboardRoute
@@ -73,6 +81,16 @@ fun FoldGoNavHost(
                         popUpTo(SplashRoute) { inclusive = true }
                     }
                 },
+                onNavigateToLogin = {
+                    navController.navigate(LoginRoute) {
+                        popUpTo(SplashRoute) { inclusive = true }
+                    }
+                },
+                onNavigateToStaffSelection = {
+                    navController.navigate(StaffSelectionRoute) {
+                        popUpTo(SplashRoute) { inclusive = true }
+                    }
+                },
                 onNavigateToDashboard = {
                     navController.navigate(DashboardRoute) {
                         popUpTo(SplashRoute) { inclusive = true }
@@ -84,8 +102,31 @@ fun FoldGoNavHost(
         composable<OnboardingRoute> {
             OnboardingScreen(
                 onFinish = {
-                    navController.navigate(ShopRegistrationRoute) {
+                    navController.navigate(LoginRoute) {
                         popUpTo(OnboardingRoute) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable<LoginRoute> {
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(StaffSelectionRoute) {
+                        popUpTo(LoginRoute) { inclusive = true }
+                    }
+                },
+                onCreateShop = {
+                    navController.navigate(ShopRegistrationRoute)
+                }
+            )
+        }
+
+        composable<StaffSelectionRoute> {
+            StaffSelectionScreen(
+                onStaffSelected = {
+                    navController.navigate(DashboardRoute) {
+                        popUpTo(StaffSelectionRoute) { inclusive = true }
                     }
                 }
             )
@@ -94,7 +135,7 @@ fun FoldGoNavHost(
         composable<ShopRegistrationRoute> {
             ShopRegistrationScreen(
                 onRegistrationSuccess = {
-                    navController.navigate(DashboardRoute) {
+                    navController.navigate(StaffSelectionRoute) {
                         popUpTo(ShopRegistrationRoute) { inclusive = true }
                     }
                 }

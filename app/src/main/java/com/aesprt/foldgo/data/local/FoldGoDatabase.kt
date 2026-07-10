@@ -15,9 +15,10 @@ import com.aesprt.foldgo.data.local.entities.*
         MachineEntity::class,
         OrderEntity::class,
         InventoryEntity::class,
-        SyncOutboxEntity::class
+        SyncOutboxEntity::class,
+        StaffEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -26,4 +27,5 @@ abstract class FoldGoDatabase : RoomDatabase() {
     abstract val orderDao: OrderDao
     abstract val machineDao: MachineDao
     abstract val inventoryDao: InventoryDao
+    abstract val staffDao: com.aesprt.foldgo.data.local.dao.StaffDao
 }

@@ -15,6 +15,7 @@ data class ShopRegistrationUiState(
     val shopName: String = "",
     val address: String = "",
     val ownerName: String = "",
+    val pin: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSuccess: Boolean = false
@@ -40,22 +41,29 @@ class ShopRegistrationViewModel(
         _uiState.update { it.copy(ownerName = name) }
     }
 
+    fun onPinChange(pin: String) {
+        if (pin.length <= 4) {
+            _uiState.update { it.copy(pin = pin) }
+        }
+    }
+
     fun registerShop() {
         val state = _uiState.value
-        if (state.shopName.isBlank() || state.address.isBlank()) {
-            _uiState.update { it.copy(error = "Please fill in all details") }
+        if (state.shopName.isBlank() || state.address.isBlank() || state.pin.length < 4) {
+            _uiState.update { it.copy(error = "Please fill in all details including a 4-digit PIN") }
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val shopId = UUID.randomUUID().toString()
+                val shopId = UUID.randomUUID().toString().take(8).uppercase() // Simpler Shop ID for user
                 val shop = Shop(
                     shopId = shopId,
                     name = state.shopName,
                     address = state.address,
                     ownerId = "owner_${state.ownerName}",
+                    pin = state.pin,
                     settings = emptyMap(),
                     createdAt = System.currentTimeMillis()
                 )

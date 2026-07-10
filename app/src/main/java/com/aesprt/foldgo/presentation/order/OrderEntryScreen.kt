@@ -31,7 +31,7 @@ fun OrderEntryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
-    
+
     OrderEntryContent(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
@@ -76,7 +76,13 @@ fun OrderEntryContent(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text("New Order", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = {
+                        Text(
+                            "New Order",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -86,9 +92,12 @@ fun OrderEntryContent(
                 )
             }
         ) { padding ->
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .imePadding()
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -98,18 +107,28 @@ fun OrderEntryContent(
                     OutlinedTextField(
                         value = uiState.customerName,
                         onValueChange = onCustomerNameChange,
-                        label = { Text("Customer Name", style = MaterialTheme.typography.bodyMedium) },
+                        label = {
+                            Text(
+                                "Customer Name",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp)
                     )
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     OutlinedTextField(
                         value = uiState.phoneNumber,
                         onValueChange = onPhoneNumberChange,
-                        label = { Text("Phone Number", style = MaterialTheme.typography.bodyMedium) },
+                        label = {
+                            Text(
+                                "Phone Number",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp)
@@ -127,12 +146,16 @@ fun OrderEntryContent(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         TextButton(
                             onClick = onShowAddDialog,
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Add Service", style = MaterialTheme.typography.labelLarge)
                         }
@@ -146,12 +169,22 @@ fun OrderEntryContent(
                         FilterChip(
                             selected = false,
                             onClick = { onAddItem("Wash & Dry", 1.0, "KG", 65.0) },
-                            label = { Text("Wash & Dry", style = MaterialTheme.typography.labelMedium) }
+                            label = {
+                                Text(
+                                    "Wash & Dry",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
                         )
                         FilterChip(
                             selected = false,
                             onClick = { onAddItem("Full Service", 5.0, "KG", 180.0) },
-                            label = { Text("Full Service", style = MaterialTheme.typography.labelMedium) }
+                            label = {
+                                Text(
+                                    "Full Service",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
                         )
                     }
 
@@ -197,7 +230,10 @@ fun OrderEntryContent(
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 } else {
-                                    Text("Create Order", style = MaterialTheme.typography.labelLarge)
+                                    Text(
+                                        "Create Order",
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
                                 }
                             }
                         }
@@ -208,7 +244,12 @@ fun OrderEntryContent(
                     AlertDialog(
                         onDismissRequest = onClearError,
                         confirmButton = {
-                            TextButton(onClick = onClearError) { Text("OK", style = MaterialTheme.typography.labelLarge) }
+                            TextButton(onClick = onClearError) {
+                                Text(
+                                    "OK",
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
                         },
                         title = { Text("Error", style = MaterialTheme.typography.titleLarge) },
                         text = { Text(uiState.error, style = MaterialTheme.typography.bodyMedium) }
@@ -231,12 +272,27 @@ fun ItemRow(item: ServiceItem, onDelete: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Text("${item.quantity} ${item.unit} x ${PriceFormatter.format(item.pricePerUnit)}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    item.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "${item.quantity} ${item.unit} x ${PriceFormatter.format(item.pricePerUnit)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
-            Text(PriceFormatter.format(item.totalPrice), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Text(
+                PriceFormatter.format(item.totalPrice),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }

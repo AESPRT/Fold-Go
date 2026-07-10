@@ -17,6 +17,7 @@ fun ShopEntity.toDomain(): Shop {
         name = name,
         address = address,
         ownerId = ownerId,
+        pin = pin,
         settings = settingsMap,
         createdAt = createdAt
     )
@@ -28,7 +29,30 @@ fun Shop.toEntity(): ShopEntity {
         name = name,
         address = address,
         ownerId = ownerId,
+        pin = pin,
         settings = Json.encodeToString(settings),
+        createdAt = createdAt
+    )
+}
+
+fun StaffEntity.toDomain(): com.aesprt.foldgo.domain.model.Staff {
+    return com.aesprt.foldgo.domain.model.Staff(
+        staffId = staffId,
+        shopId = shopId,
+        name = name,
+        role = role,
+        isActive = isActive,
+        createdAt = createdAt
+    )
+}
+
+fun com.aesprt.foldgo.domain.model.Staff.toEntity(): StaffEntity {
+    return StaffEntity(
+        staffId = staffId,
+        shopId = shopId,
+        name = name,
+        role = role,
+        isActive = isActive,
         createdAt = createdAt
     )
 }

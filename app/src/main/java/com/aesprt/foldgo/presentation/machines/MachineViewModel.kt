@@ -74,7 +74,7 @@ class MachineViewModel(
 
     fun addMachine(name: String, type: MachineType, capacity: Double) {
         viewModelScope.launch {
-            val shopId = preferenceManager.currentShopId.first() ?: "default_shop"
+            val shopId = preferenceManager.currentShopId.first() ?: return@launch
             val newMachine = Machine(
                 machineId = UUID.randomUUID().toString(),
                 shopId = shopId,

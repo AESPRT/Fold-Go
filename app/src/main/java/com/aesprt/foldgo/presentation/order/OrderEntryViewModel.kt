@@ -68,7 +68,14 @@ class OrderEntryViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             try {
-                val shopId = preferenceManager.currentShopId.first() ?: "default_shop"
+                val shopId = preferenceManager.currentShopId.first() ?: ""
+                val staffId = preferenceManager.currentStaffId.first() ?: ""
+                
+                if (shopId.isBlank() || staffId.isBlank()) {
+                    _uiState.update { it.copy(error = "Session error. Please login again.") }
+                    return@launch
+                }
+
                 val order = Order(
                     orderId = UUID.randomUUID().toString(),
                     shopId = shopId,
@@ -84,7 +91,7 @@ class OrderEntryViewModel(
                     paymentStatus = PaymentStatus.PENDING,
                     intakePhotos = emptyList(),
                     machineId = null,
-                    staffId = "staff_01",
+                    staffId = staffId,
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis()
                 )
