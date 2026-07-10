@@ -73,6 +73,8 @@ class OrderEntryViewModel(
                     orderId = UUID.randomUUID().toString(),
                     shopId = shopId,
                     customerId = "cust_${currentState.phoneNumber}",
+                    customerName = currentState.customerName,
+                    customerPhone = currentState.phoneNumber,
                     orderNumber = "FG-${System.currentTimeMillis().toString().takeLast(4)}",
                     items = currentState.selectedItems,
                     totalAmount = currentState.totalAmount,

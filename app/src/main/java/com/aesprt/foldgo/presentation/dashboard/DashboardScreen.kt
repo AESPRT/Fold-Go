@@ -107,11 +107,6 @@ fun DashboardContent(
             ) {
                 FoldGoLoading()
             }
-        } else if (uiState.orders.isEmpty()) {
-            FoldGoEmptyState(
-                message = "No active orders",
-                description = "Tap the + button to create your first laundry order and start tracking progress."
-            )
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -120,7 +115,7 @@ fun DashboardContent(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Summary Grid
+                // Summary Grid (Always Visible)
                 item {
                     Row(
                         modifier = Modifier
@@ -164,11 +159,20 @@ fun DashboardContent(
                     )
                 }
 
-                items(uiState.orders) { order ->
-                    OrderCard(
-                        order = order,
-                        onClick = { onOrderClick(order.orderId) }
-                    )
+                if (uiState.orders.isEmpty()) {
+                    item {
+                        FoldGoEmptyState(
+                            message = "No active orders",
+                            description = "Tap the + button to create your first laundry order and start tracking progress."
+                        )
+                    }
+                } else {
+                    items(uiState.orders) { order ->
+                        OrderCard(
+                            order = order,
+                            onClick = { onOrderClick(order.orderId) }
+                        )
+                    }
                 }
             }
         }
@@ -210,6 +214,8 @@ fun DashboardContentPreview() {
                         orderId = "1",
                         shopId = "shop1",
                         customerId = "cust1",
+                        customerName = "John Doe",
+                        customerPhone = "1234567890",
                         orderNumber = "FG-1024",
                         items = emptyList(),
                         totalAmount = 25.0,
@@ -225,6 +231,8 @@ fun DashboardContentPreview() {
                         orderId = "2",
                         shopId = "shop1",
                         customerId = "cust2",
+                        customerName = "Jane Doe",
+                        customerPhone = "9876543210",
                         orderNumber = "FG-1025",
                         items = emptyList(),
                         totalAmount = 45.0,

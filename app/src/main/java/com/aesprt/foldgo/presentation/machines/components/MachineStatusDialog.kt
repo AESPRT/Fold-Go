@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.Order
+import com.aesprt.foldgo.domain.model.OrderStatus
 
 @Composable
 fun MachineStatusDialog(
@@ -40,6 +41,7 @@ fun MachineStatusDialog(
         text = {
             if (showStartCycleConfig) {
                 StartCycleConfig(
+                    machineType = machine.type,
                     activeOrders = activeOrders,
                     selectedOrderId = selectedOrderId,
                     onOrderSelected = { selectedOrderId = it },
@@ -107,6 +109,7 @@ fun MachineStatusDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StartCycleConfig(
+    machineType: String,
     activeOrders: List<Order>,
     selectedOrderId: String?,
     onOrderSelected: (String?) -> Unit,
@@ -127,6 +130,15 @@ private fun StartCycleConfig(
 
         var expanded by remember { mutableStateOf(false) }
         val selectedOrder = activeOrders.find { it.orderId == selectedOrderId }
+
+        // Filter orders based on machine type and current status
+        val validOrders = activeOrders.filter { order ->
+            when (machineType) {
+                "WASHER" -> order.status == OrderStatus.INTAKE
+                "DRYER" -> order.status == OrderStatus.WASHED
+                else -> false
+            }
+        }
 
         ExposedDropdownMenuBox(
             expanded = expanded,
@@ -152,16 +164,39 @@ private fun StartCycleConfig(
                         expanded = false
                     }
                 )
-                activeOrders.forEach { order ->
+                validOrders.forEach { order ->
                     DropdownMenuItem(
-                        text = { Text("${order.orderNumber} - ${order.totalAmount}") },
+                        text = { Text("${order.orderNumber} - ${order.customerName}") },
                         onClick = {
                             onOrderSelected(order.orderId)
                             expanded = false
                         }
                     )
                 }
+                
+                if (validOrders.isEmpty()) {
+                    DropdownMenuItem(
+                        text = { 
+                            Text(
+                                if (machineType == "WASHER") "No Intake Orders" else "No Washed Orders",
+                                color = MaterialTheme.colorScheme.outline
+                            ) 
+                        },
+                        onClick = { expanded = false },
+                        enabled = false
+                    )
+                }
             }
+        }
+        
+        // Validation Warning
+        val ordersInProgress = activeOrders.filter { it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING }
+        if (ordersInProgress.isNotEmpty()) {
+            Text(
+                text = "Note: Active orders in cycles are hidden to prevent duplicates.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

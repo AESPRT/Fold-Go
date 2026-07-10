@@ -3,7 +3,7 @@ package com.aesprt.foldgo.domain.model
 import kotlinx.serialization.Serializable
 
 enum class OrderStatus {
-    INTAKE, WASHING, DRYING, FOLDING, READY, DELIVERED
+    INTAKE, WASHING, WASHED, DRYING, DRIED, FOLDING, READY, DELIVERED
 }
 
 enum class DeliveryMethod {
@@ -27,10 +27,13 @@ data class Order(
     val orderId: String,
     val shopId: String,
     val customerId: String,
+    val customerName: String,
+    val customerPhone: String,
     val orderNumber: String,
     val items: List<ServiceItem>,
     val totalAmount: Double,
     val paidAmount: Double,
+    val changeDue: Double = 0.0,
     val status: OrderStatus,
     val deliveryMethod: DeliveryMethod = DeliveryMethod.PICKUP,
     val paymentStatus: PaymentStatus = PaymentStatus.PENDING,

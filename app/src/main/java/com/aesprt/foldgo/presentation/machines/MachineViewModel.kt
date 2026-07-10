@@ -40,7 +40,11 @@ class MachineViewModel(
         MachineUiState(
             machines = if (filter == null) machines else machines.filter { it.type == filter },
             activeOrders = orders.filter { 
-                it.status.name == "INTAKE" || it.status.name == "WASHING" || it.status.name == "DRYING" 
+                it.status == OrderStatus.INTAKE || 
+                it.status == OrderStatus.WASHING || 
+                it.status == OrderStatus.WASHED ||
+                it.status == OrderStatus.DRYING ||
+                it.status == OrderStatus.DRIED
             },
             filteredType = filter,
             isLoading = false
@@ -102,7 +106,7 @@ class MachineViewModel(
             val orders = orderRepository.getAllOrders().first()
             val associatedOrder = orders.find { it.machineId == machineId && (it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING) }
             associatedOrder?.let { order ->
-                val nextStatus = if (order.status == OrderStatus.WASHING) OrderStatus.DRYING else OrderStatus.FOLDING
+                val nextStatus = if (order.status == OrderStatus.WASHING) OrderStatus.WASHED else OrderStatus.DRIED
                 orderRepository.upsertOrder(order.copy(
                     status = nextStatus,
                     machineId = null,

@@ -63,13 +63,21 @@ class OrderDetailViewModel(
     fun updateOrderPaymentAndDelivery(method: DeliveryMethod, amountPaid: Double) {
         val currentOrder = uiState.value.order ?: return
         viewModelScope.launch {
-            val totalPaid = currentOrder.paidAmount + amountPaid
-            val paymentStatus = if (totalPaid >= currentOrder.totalAmount) PaymentStatus.PAID else PaymentStatus.PARTIAL
+            val deliveryFee = if (method == DeliveryMethod.DELIVERY) 50.0 else 0.0
+            val finalTotal = currentOrder.totalAmount + deliveryFee
+            
+            // tendered amount is amountPaid
+            val change = (amountPaid - finalTotal).coerceAtLeast(0.0)
+            val actualPaymentTowardsOrder = if (amountPaid >= finalTotal) finalTotal else amountPaid
+            
+            val totalPaidSoFar = currentOrder.paidAmount + actualPaymentTowardsOrder
+            val paymentStatus = if (totalPaidSoFar >= finalTotal) PaymentStatus.PAID else PaymentStatus.PARTIAL
             
             orderRepository.upsertOrder(currentOrder.copy(
                 status = OrderStatus.READY,
                 deliveryMethod = method,
-                paidAmount = totalPaid,
+                paidAmount = totalPaidSoFar,
+                changeDue = change,
                 paymentStatus = paymentStatus,
                 updatedAt = System.currentTimeMillis()
             ))

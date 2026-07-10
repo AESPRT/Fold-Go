@@ -58,7 +58,7 @@ fun OrderDetailScreen(
                 )
             }
         ) { padding ->
-            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Box(modifier = Modifier.padding(padding).fillMaxSize().imePadding()) {
                 if (uiState.isLoading) {
                     FoldGoLoading(modifier = Modifier.align(Alignment.Center))
                 } else if (uiState.order != null) {
@@ -66,6 +66,7 @@ fun OrderDetailScreen(
                         order = uiState.order!!,
                         machine = uiState.machine,
                         onReady = viewModel::updateOrderPaymentAndDelivery,
+                        onOrderStatusClick = viewModel::updateOrderStatus,
                         onDelivered = viewModel::markAsDelivered
                     )
                 } else {
@@ -81,6 +82,7 @@ fun OrderDetailContent(
     order: Order,
     machine: Machine?,
     onReady: (DeliveryMethod, Double) -> Unit,
+    onOrderStatusClick: (OrderStatus) -> Unit,
     onDelivered: () -> Unit
 ) {
     LazyColumn(
@@ -92,9 +94,11 @@ fun OrderDetailContent(
             OrderHeader(order)
         }
 
-        if (order.status == OrderStatus.WASHING || order.status == OrderStatus.DRYING) {
+        if (order.status == OrderStatus.WASHING || order.status == OrderStatus.DRYING || 
+            order.status == OrderStatus.WASHED || order.status == OrderStatus.DRIED ||
+            order.status == OrderStatus.FOLDING) {
             item {
-                ActiveCycleCard(order, machine)
+                ActiveCycleCard(order, machine, onOrderStatusClick)
             }
         }
 
@@ -106,6 +110,7 @@ fun OrderDetailContent(
             item {
                 StatusActionCard(
                     status = order.status,
+                    order = order,
                     onReady = onReady,
                     onDelivered = onDelivered
                 )
@@ -168,9 +173,25 @@ fun OrderHeader(order: Order) {
 @Composable
 fun ActiveCycleCard(
     order: Order,
-    machine: Machine?
+    machine: Machine?,
+    onOrderStatusClick: (OrderStatus) -> Unit
 ) {
-    val statusColor = getStatusColor(order.status)
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    
+    val isCycleComplete = (machine?.endTime != null && currentTime >= machine.endTime) || 
+                          order.status == OrderStatus.WASHED || order.status == OrderStatus.DRIED
+    
+    val statusColor = if (isCycleComplete || order.status == OrderStatus.FOLDING) Color(0xFF4CAF50) else getStatusColor(order.status)
+    
+    LaunchedEffect(machine?.endTime, order.status) {
+        if (machine?.endTime != null && (order.status == OrderStatus.WASHING || order.status == OrderStatus.DRYING)) {
+            while (currentTime < machine.endTime) {
+                delay(1000.milliseconds)
+                currentTime = System.currentTimeMillis()
+            }
+        }
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -183,13 +204,13 @@ fun ActiveCycleCard(
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(contentAlignment = Alignment.Center) {
@@ -200,33 +221,86 @@ fun ActiveCycleCard(
                 ) {}
                 
                 Icon(
-                    imageVector = if (order.status == OrderStatus.WASHING) 
-                        Icons.Rounded.LocalLaundryService else Icons.Rounded.Air,
+                    imageVector = when(order.status) {
+                        OrderStatus.WASHING, OrderStatus.WASHED -> Icons.Rounded.LocalLaundryService
+                        OrderStatus.DRYING, OrderStatus.DRIED -> Icons.Rounded.Air
+                        else -> Icons.Rounded.Checkroom
+                    },
                     contentDescription = null,
                     modifier = Modifier
                         .size(64.dp)
-                        .rotate(rotation),
+                        .then(if (!isCycleComplete && order.status != OrderStatus.FOLDING) Modifier.rotate(rotation) else Modifier),
                     tint = statusColor
                 )
+                
+                if (isCycleComplete) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp).align(Alignment.BottomEnd),
+                        tint = Color(0xFF4CAF50)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = if (order.status == OrderStatus.WASHING) "Currently Washing" else "Currently Drying",
+                text = when {
+                    order.status == OrderStatus.FOLDING -> "Folding in Progress"
+                    isCycleComplete && (order.status == OrderStatus.WASHING || order.status == OrderStatus.WASHED) -> "Ready to Dry"
+                    isCycleComplete && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED) -> "Ready to Fold"
+                    order.status == OrderStatus.WASHING -> "Currently Washing"
+                    else -> "Currently Drying"
+                },
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = if (isCycleComplete || order.status == OrderStatus.FOLDING) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
             )
             
-            if (machine != null) {
+            if (isCycleComplete && (order.status == OrderStatus.WASHING || order.status == OrderStatus.WASHED)) {
+                Text(
+                    text = "Please select a dryer in the Machine Matrix",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else if (isCycleComplete && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Please proceed to folding area",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { onOrderStatusClick(OrderStatus.FOLDING) },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Start Folding Timer")
+                    }
+                }
+            } else if (order.status == OrderStatus.FOLDING) {
+                 Text(
+                    text = "Tracking folding duration...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else if (machine != null) {
                 Text(
                     text = "assigned to ${machine.name}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
-                if (machine.endTime != null) {
-                    RemainingTimer(endTime = machine.endTime, color = statusColor)
+                if (!isCycleComplete && machine.endTime != null) {
+                    RemainingTimer(endTime = machine.endTime, color = statusColor, currentTime = currentTime)
                 }
             }
         }
@@ -235,16 +309,7 @@ fun ActiveCycleCard(
 
 @SuppressLint("DefaultLocale")
 @Composable
-fun RemainingTimer(endTime: Long, color: Color) {
-    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    
-    LaunchedEffect(Unit) {
-        while (currentTime < endTime) {
-            delay(1000.milliseconds)
-            currentTime = System.currentTimeMillis()
-        }
-    }
-
+fun RemainingTimer(endTime: Long, color: Color, currentTime: Long) {
     val remaining = endTime - currentTime
     if (remaining > 0) {
         val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining)
@@ -299,6 +364,9 @@ fun OrderInfoCard(order: Order) {
             Spacer(modifier = Modifier.height(16.dp))
             InfoRow(Icons.Rounded.Payments, "Total Amount", PriceFormatter.format(order.totalAmount))
             InfoRow(Icons.Rounded.AccountBalanceWallet, "Paid Amount", PriceFormatter.format(order.paidAmount))
+            if (order.changeDue > 0) {
+                InfoRow(Icons.Rounded.Payments, "Change Due", PriceFormatter.format(order.changeDue))
+            }
         }
     }
 }
@@ -368,12 +436,14 @@ fun ItemsListCard(order: Order) {
 @Composable
 fun StatusActionCard(
     status: OrderStatus,
+    order: Order, // Added order parameter
     onReady: (DeliveryMethod, Double) -> Unit,
     onDelivered: () -> Unit
 ) {
     var showPaymentDialog by remember { mutableStateOf(false) }
-    var deliveryMethod by remember { mutableStateOf(DeliveryMethod.PICKUP) }
+    var deliveryMethod by remember { mutableStateOf(order.deliveryMethod) }
     var amountPaid by remember { mutableStateOf("") }
+    val deliveryFee = 50.0 // Hardcoded for now, could be in settings
 
     val nextStatus = when (status) {
         OrderStatus.FOLDING -> OrderStatus.READY
@@ -448,23 +518,74 @@ fun StatusActionCard(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Price Breakdown
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            BreakdownRow("Order Items", order.totalAmount)
+                            if (deliveryMethod == DeliveryMethod.DELIVERY) {
+                                BreakdownRow("Delivery Fee", deliveryFee)
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+                            val finalTotal = if (deliveryMethod == DeliveryMethod.DELIVERY) order.totalAmount + deliveryFee else order.totalAmount
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Final Amount", fontWeight = FontWeight.Bold)
+                                Text(PriceFormatter.format(finalTotal), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                     
                     OutlinedTextField(
                         value = amountPaid,
                         onValueChange = { amountPaid = it },
-                        label = { Text("Amount Paid") },
+                        label = { Text("Tendered Amount") },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                         shape = RoundedCornerShape(12.dp)
                     )
 
+                    val tendered = amountPaid.toDoubleOrNull() ?: 0.0
+                    val finalTotal = if (deliveryMethod == DeliveryMethod.DELIVERY) order.totalAmount + deliveryFee else order.totalAmount
+                    val change = tendered - finalTotal
+
+                    if (change > 0) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("Change Due", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text(
+                                        PriceFormatter.format(change),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Black,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                }
+                                Icon(Icons.Rounded.Payments, null, tint = MaterialTheme.colorScheme.secondary)
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
                         onClick = {
-                            val amount = amountPaid.toDoubleOrNull() ?: 0.0
-                            onReady(deliveryMethod, amount)
+                            onReady(deliveryMethod, tendered)
                             showPaymentDialog = false
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -475,6 +596,14 @@ fun StatusActionCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BreakdownRow(label: String, amount: Double) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall)
+        Text(PriceFormatter.format(amount), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -508,7 +637,9 @@ fun InfoRow(icon: ImageVector, label: String, value: String) {
 fun getStatusColor(status: OrderStatus): Color = when (status) {
     OrderStatus.INTAKE -> Color(0xFFFFAB00)
     OrderStatus.WASHING -> Color(0xFF03A9F4)
+    OrderStatus.WASHED -> Color(0xFF4CAF50)
     OrderStatus.DRYING -> Color(0xFF03A9F4)
+    OrderStatus.DRIED -> Color(0xFF4CAF50)
     OrderStatus.FOLDING -> Color(0xFF03A9F4)
     OrderStatus.READY -> Color(0xFF4CAF50)
     OrderStatus.DELIVERED -> Color(0xFF8BC34A)

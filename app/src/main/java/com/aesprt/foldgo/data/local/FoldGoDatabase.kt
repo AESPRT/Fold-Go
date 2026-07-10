@@ -17,7 +17,7 @@ import com.aesprt.foldgo.data.local.entities.*
         InventoryEntity::class,
         SyncOutboxEntity::class
     ],
-    version = 2,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,24 +15,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.MachineCard
 import com.aesprt.foldgo.presentation.components.ModernBackground
-import com.aesprt.foldgo.presentation.machines.components.AddMachineDialog
+import com.aesprt.foldgo.presentation.components.SummaryCard
 import com.aesprt.foldgo.presentation.machines.components.MachineFilterSection
-import com.aesprt.foldgo.presentation.machines.components.MachineStatusDialog
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MachineMatrixScreen(
     onAddNewMachine: () -> Unit,
+    onMachineClick: (String) -> Unit, // Added this parameter
     viewModel: MachineViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedMachine by remember { mutableStateOf<Machine?>(null) }
 
     ModernBackground {
         Scaffold(
@@ -60,6 +59,32 @@ fun MachineMatrixScreen(
             }
         ) { padding ->
             Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                // Analytics Summary
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val washingCount = uiState.machines.count { it.status == "BUSY" && it.type == "WASHER" }
+                    val dryingCount = uiState.machines.count { it.status == "BUSY" && it.type == "DRYER" }
+                    
+                    SummaryCard(
+                        title = "Washing",
+                        value = washingCount.toString(),
+                        icon = Icons.Rounded.LocalLaundryService,
+                        iconColor = Color(0xFF03A9F4),
+                        modifier = Modifier.weight(1f)
+                    )
+                    SummaryCard(
+                        title = "Drying",
+                        value = dryingCount.toString(),
+                        icon = Icons.Rounded.Air,
+                        iconColor = Color(0xFFFFAB00),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
                 MachineFilterSection(
                     selectedType = uiState.filteredType,
                     onTypeSelected = viewModel::onFilterTypeChanged
@@ -88,32 +113,12 @@ fun MachineMatrixScreen(
                         items(uiState.machines) { machine ->
                             MachineCard(
                                 machine = machine,
-                                onClick = { selectedMachine = machine }
+                                onClick = { onMachineClick(machine.machineId) } // Updated to navigate
                             )
                         }
                     }
                 }
             }
         }
-    }
-
-    selectedMachine?.let { machine ->
-        MachineStatusDialog(
-            machine = machine,
-            activeOrders = uiState.activeOrders,
-            onDismiss = { selectedMachine = null },
-            onStatusChange = { newStatus ->
-                viewModel.updateStatus(machine.machineId, newStatus)
-                selectedMachine = null
-            },
-            onStartCycle = { duration, orderId ->
-                viewModel.startCycle(machine.machineId, duration, orderId)
-                selectedMachine = null
-            },
-            onFinishCycle = {
-                viewModel.finishCycle(machine.machineId)
-                selectedMachine = null
-            }
-        )
     }
 }

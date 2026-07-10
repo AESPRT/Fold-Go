@@ -46,6 +46,19 @@ fun OrderCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
+                text = order.customerName,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = order.customerPhone,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
                 text = "Total: ${PriceFormatter.format(order.totalAmount)}",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary
@@ -66,10 +79,18 @@ fun StatusChip(status: OrderStatus) {
     val containerColor = when (status) {
         OrderStatus.INTAKE -> Color(0xFFFFAB00)
         OrderStatus.WASHING -> Color(0xFF03A9F4)
+        OrderStatus.WASHED -> Color(0xFF4CAF50)
         OrderStatus.DRYING -> Color(0xFF03A9F4)
+        OrderStatus.DRIED -> Color(0xFF4CAF50)
         OrderStatus.FOLDING -> Color(0xFF03A9F4)
         OrderStatus.READY -> Color(0xFF4CAF50)
         OrderStatus.DELIVERED -> Color(0xFF8BC34A)
+    }
+    
+    val text = when (status) {
+        OrderStatus.WASHED -> "READY TO DRY"
+        OrderStatus.DRIED -> "READY TO FOLD"
+        else -> status.name
     }
     
     Surface(
@@ -77,7 +98,7 @@ fun StatusChip(status: OrderStatus) {
         shape = MaterialTheme.shapes.small
     ) {
         Text(
-            text = status.name,
+            text = text,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall,
             color = Color.White
@@ -95,6 +116,8 @@ fun OrderCardPreview() {
                     orderId = "1",
                     shopId = "shop1",
                     customerId = "cust1",
+                    customerName = "John Doe",
+                    customerPhone = "1234567890",
                     orderNumber = "FG-1024",
                     items = emptyList(),
                     totalAmount = 25.0,

@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import com.aesprt.foldgo.presentation.dashboard.DashboardScreen
 import com.aesprt.foldgo.presentation.inventory.InventoryScreen
 import com.aesprt.foldgo.presentation.machines.AddMachineScreen
+import com.aesprt.foldgo.presentation.machines.MachineDetailScreen
 import com.aesprt.foldgo.presentation.machines.MachineMatrixScreen
 import com.aesprt.foldgo.presentation.onboarding.OnboardingScreen
 import com.aesprt.foldgo.presentation.order.OrderDetailScreen
@@ -31,6 +32,9 @@ object DashboardRoute
 
 @Serializable
 data class OrderDetailRoute(val orderId: String)
+
+@Serializable
+data class MachineDetailRoute(val machineId: String)
 
 @Serializable
 object NewOrderRoute
@@ -124,7 +128,18 @@ fun FoldGoNavHost(
             MachineMatrixScreen(
                 onAddNewMachine = {
                     navController.navigate(NewMachineRoute)
+                },
+                onMachineClick = { machineId ->
+                    navController.navigate(MachineDetailRoute(machineId))
                 }
+            )
+        }
+
+        composable<MachineDetailRoute> { backStackEntry ->
+            val machineId = backStackEntry.arguments?.getString("machineId") ?: ""
+            MachineDetailScreen(
+                machineId = machineId,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
