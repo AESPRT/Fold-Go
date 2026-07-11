@@ -57,6 +57,50 @@ fun com.aesprt.foldgo.domain.model.Staff.toEntity(): StaffEntity {
     )
 }
 
+fun MachineCategoryEntity.toDomain(): com.aesprt.foldgo.domain.model.MachineCategory {
+    return com.aesprt.foldgo.domain.model.MachineCategory(
+        categoryId = categoryId,
+        name = name,
+        type = type,
+        iconName = iconName,
+        colorHex = colorHex
+    )
+}
+
+fun com.aesprt.foldgo.domain.model.MachineCategory.toEntity(): MachineCategoryEntity {
+    return MachineCategoryEntity(
+        categoryId = categoryId,
+        name = name,
+        type = type,
+        iconName = iconName,
+        colorHex = colorHex
+    )
+}
+
+fun ServiceEntity.toDomain(): com.aesprt.foldgo.domain.model.Service {
+    return com.aesprt.foldgo.domain.model.Service(
+        serviceId = serviceId,
+        shopId = shopId,
+        name = name,
+        defaultQuantity = defaultQuantity,
+        unit = unit,
+        pricePerUnit = pricePerUnit,
+        type = type
+    )
+}
+
+fun com.aesprt.foldgo.domain.model.Service.toEntity(): ServiceEntity {
+    return ServiceEntity(
+        serviceId = serviceId,
+        shopId = shopId,
+        name = name,
+        defaultQuantity = defaultQuantity,
+        unit = unit,
+        pricePerUnit = pricePerUnit,
+        type = type
+    )
+}
+
 fun OrderEntity.toDomain(): Order {
     val items = try {
         Json.decodeFromString<List<ServiceItem>>(itemsJson)
@@ -86,6 +130,7 @@ fun OrderEntity.toDomain(): Order {
         intakePhotos = photos,
         machineId = machineId,
         staffId = staffId,
+        staffName = staffName,
         createdAt = createdAt,
         updatedAt = updatedAt
     )
@@ -109,6 +154,7 @@ fun Order.toEntity(isSynced: Boolean = false): OrderEntity {
         intakePhotosJson = Json.encodeToString(intakePhotos),
         machineId = machineId,
         staffId = staffId,
+        staffName = staffName,
         createdAt = createdAt,
         updatedAt = updatedAt,
         isSynced = isSynced

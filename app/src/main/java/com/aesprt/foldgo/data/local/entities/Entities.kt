@@ -59,6 +59,7 @@ data class OrderEntity(
     val intakePhotosJson: String?,
     val machineId: String?,
     val staffId: String,
+    val staffName: String,
     val createdAt: Long,
     val updatedAt: Long,
     val isSynced: Boolean = false
@@ -82,4 +83,24 @@ data class SyncOutboxEntity(
     val operation: String,
     val payloadJson: String,
     val createdAt: Long
+)
+
+@Entity(tableName = "machine_categories")
+data class MachineCategoryEntity(
+    @PrimaryKey val categoryId: String,
+    val name: String,
+    val type: MachineType,
+    val iconName: String? = null,
+    val colorHex: String? = null
+)
+
+@Entity(tableName = "services")
+data class ServiceEntity(
+    @PrimaryKey val serviceId: String,
+    val shopId: String,
+    val name: String,
+    val defaultQuantity: Double,
+    val unit: String,
+    val pricePerUnit: Double,
+    val type: com.aesprt.foldgo.domain.model.ServiceType
 )

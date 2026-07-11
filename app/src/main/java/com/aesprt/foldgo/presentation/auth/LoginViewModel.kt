@@ -3,7 +3,7 @@ package com.aesprt.foldgo.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.data.local.PreferenceManager
-import com.aesprt.foldgo.domain.repository.ShopRepository
+import com.aesprt.foldgo.domain.usecase.GetShopByIdUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -19,7 +19,7 @@ data class LoginUiState(
 )
 
 class LoginViewModel(
-    private val shopRepository: ShopRepository,
+    private val getShopByIdUseCase: GetShopByIdUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -45,7 +45,7 @@ class LoginViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val shop = shopRepository.getShop(state.shopId).first()
+            val shop = getShopByIdUseCase(state.shopId).first()
             
             if (shop != null && shop.pin == state.pin) {
                 preferenceManager.setCurrentShopId(shop.shopId)

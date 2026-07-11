@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,7 @@ import com.aesprt.foldgo.domain.model.MachineStatus
 import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.ServiceType
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import org.koin.androidx.compose.koinViewModel
@@ -44,6 +46,7 @@ fun OrderDetailScreen(
     viewModel: OrderDetailViewModel = koinViewModel { parametersOf(orderId) }
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     ModernBackground {
         Scaffold(
@@ -74,6 +77,28 @@ fun OrderDetailScreen(
                     )
                 } else {
                     Text("Order not found", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.align(Alignment.Center))
+                }
+
+                if (uiState.showSmsPrompt && uiState.order != null) {
+                    val order = uiState.order!!
+                    AlertDialog(
+                        onDismissRequest = { viewModel.dismissSmsPrompt() },
+                        title = { Text("Notify Customer?") },
+                        text = { Text("Would you like to send an SMS to ${order.customerName} notifying them that their order is ready?") },
+                        confirmButton = {
+                            Button(onClick = {
+                                val message = "Hi ${order.customerName}, your Fold-Go order ${order.orderNumber} is now ready for ${order.deliveryMethod.name.lowercase()}. Total amount: ${PriceFormatter.format(order.totalAmount)}."
+                                viewModel.sendSmsAndComplete(message)
+                            }) {
+                                Text("Send SMS")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { viewModel.dismissSmsPrompt() }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -188,6 +213,7 @@ fun ActiveCycleCard(
                           order.status == OrderStatus.WASHED || order.status == OrderStatus.DRIED ||
                           order.status == OrderStatus.IRONED
     
+    val hasDryItems = order.items.any { it.type == ServiceType.DRY || it.type == ServiceType.WASH_DRY }
     val ironMachines = allMachines.filter { it.type == MachineType.IRON }
     val isIronAvailable = ironMachines.isNotEmpty()
     
@@ -255,7 +281,9 @@ fun ActiveCycleCard(
                 text = when {
                     order.status == OrderStatus.FOLDING -> "Folding in Progress"
                     order.status == OrderStatus.IRONING -> "Ironing in Progress"
-                    isCycleComplete && (order.status == OrderStatus.WASHING || order.status == OrderStatus.WASHED) -> "Ready to Dry"
+                    isCycleComplete && (order.status == OrderStatus.WASHING || order.status == OrderStatus.WASHED) -> {
+                        if (hasDryItems) "Ready to Dry" else "Ready to Fold"
+                    }
                     isCycleComplete && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED) -> "Ready to Fold/Iron"
                     order.status == OrderStatus.WASHING -> "Currently Washing"
                     order.status == OrderStatus.IRONED -> "Ready to Fold"
@@ -267,13 +295,25 @@ fun ActiveCycleCard(
             )
             
             if (isCycleComplete && (order.status == OrderStatus.WASHING || order.status == OrderStatus.WASHED)) {
-                Text(
-                    text = "Please select a dryer in the Machine Matrix",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                if (hasDryItems) {
+                    Text(
+                        text = "Please select a dryer in the Machine Matrix",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { onOrderStatusClick(OrderStatus.FOLDING) },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Start Folding Timer", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
             } else if (isCycleComplete && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (isIronAvailable) {
@@ -414,8 +454,8 @@ fun OrderInfoCard(order: Order) {
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(16.dp))
-            InfoRow(Icons.Rounded.Person, "Customer ID", order.customerId)
-            InfoRow(Icons.Rounded.Phone, "Staff ID", order.staffId)
+            InfoRow(Icons.Rounded.Person, "Customer", order.customerName)
+            InfoRow(Icons.Rounded.Phone, "Contact Number", order.customerPhone)
             
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 16.dp),

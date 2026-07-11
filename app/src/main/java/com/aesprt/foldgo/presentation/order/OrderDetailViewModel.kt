@@ -2,13 +2,8 @@ package com.aesprt.foldgo.presentation.order
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aesprt.foldgo.domain.model.DeliveryMethod
-import com.aesprt.foldgo.domain.model.Machine
-import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.OrderStatus
-import com.aesprt.foldgo.domain.model.PaymentStatus
-import com.aesprt.foldgo.domain.repository.MachineRepository
-import com.aesprt.foldgo.domain.repository.OrderRepository
+import com.aesprt.foldgo.domain.model.*
+import com.aesprt.foldgo.domain.usecase.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -17,13 +12,18 @@ data class OrderDetailUiState(
     val machine: Machine? = null,
     val allMachines: List<Machine> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val showSmsPrompt: Boolean = false,
+    val pendingOrder: Order? = null,
+    val isSendingSms: Boolean = false
 )
 
 class OrderDetailViewModel(
     private val orderId: String,
-    private val orderRepository: OrderRepository,
-    private val machineRepository: MachineRepository
+    private val getOrderByIdUseCase: GetOrderByIdUseCase,
+    private val upsertOrderUseCase: UpsertOrderUseCase,
+    private val getMachinesUseCase: GetMachinesUseCase,
+    private val sendSmsUseCase: SendSmsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OrderDetailUiState())
@@ -36,8 +36,8 @@ class OrderDetailViewModel(
     private fun loadOrderDetail() {
         viewModelScope.launch {
             combine(
-                orderRepository.getOrderById(orderId),
-                machineRepository.getAllMachines()
+                getOrderByIdUseCase(orderId),
+                getMachinesUseCase()
             ) { order, machines ->
                 val machine = machines.find { it.machineId == order?.machineId }
                 OrderDetailUiState(
@@ -55,7 +55,7 @@ class OrderDetailViewModel(
     fun updateOrderStatus(status: OrderStatus) {
         val currentOrder = uiState.value.order ?: return
         viewModelScope.launch {
-            orderRepository.upsertOrder(currentOrder.copy(
+            upsertOrderUseCase(currentOrder.copy(
                 status = status,
                 updatedAt = System.currentTimeMillis()
             ))
@@ -68,31 +68,62 @@ class OrderDetailViewModel(
             val deliveryFee = if (method == DeliveryMethod.DELIVERY) 50.0 else 0.0
             val finalTotal = currentOrder.totalAmount + deliveryFee
             
-            // tendered amount is amountPaid
             val change = (amountPaid - finalTotal).coerceAtLeast(0.0)
             val actualPaymentTowardsOrder = if (amountPaid >= finalTotal) finalTotal else amountPaid
             
             val totalPaidSoFar = currentOrder.paidAmount + actualPaymentTowardsOrder
             val paymentStatus = if (totalPaidSoFar >= finalTotal) PaymentStatus.PAID else PaymentStatus.PARTIAL
             
-            orderRepository.upsertOrder(currentOrder.copy(
+            val updatedOrder = currentOrder.copy(
                 status = OrderStatus.READY,
                 deliveryMethod = method,
                 paidAmount = totalPaidSoFar,
                 changeDue = change,
                 paymentStatus = paymentStatus,
                 updatedAt = System.currentTimeMillis()
-            ))
+            )
+            
+            _uiState.update { it.copy(pendingOrder = updatedOrder, showSmsPrompt = true) }
         }
     }
 
     fun markAsDelivered() {
         val currentOrder = uiState.value.order ?: return
         viewModelScope.launch {
-            orderRepository.upsertOrder(currentOrder.copy(
+            val updatedOrder = currentOrder.copy(
                 status = OrderStatus.DELIVERED,
                 updatedAt = System.currentTimeMillis()
-            ))
+            )
+            _uiState.update { it.copy(pendingOrder = updatedOrder, showSmsPrompt = true) }
+        }
+    }
+
+    fun sendSmsAndComplete(message: String) {
+        val order = uiState.value.pendingOrder ?: uiState.value.order ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSendingSms = true) }
+            val result = sendSmsUseCase(order.customerPhone, message)
+            if (result.isSuccess) {
+                completePendingUpdate()
+            } else {
+                _uiState.update { it.copy(isSendingSms = false, error = "Failed to send SMS. Please check internet connection.") }
+            }
+        }
+    }
+
+    fun completePendingUpdate() {
+        val orderToSave = uiState.value.pendingOrder ?: return
+        viewModelScope.launch {
+            upsertOrderUseCase(orderToSave)
+            _uiState.update { it.copy(pendingOrder = null, showSmsPrompt = false, isSendingSms = false) }
+        }
+    }
+
+    fun dismissSmsPrompt() {
+        if (uiState.value.pendingOrder != null) {
+            completePendingUpdate()
+        } else {
+            _uiState.update { it.copy(showSmsPrompt = false) }
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.aesprt.foldgo.presentation.machines
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,20 +30,37 @@ fun AddMachineScreen(
     onNavigateBack: () -> Unit,
     viewModel: MachineViewModel = koinViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+
     AddMachineContent(
+        uiState = uiState,
         onNavigateBack = onNavigateBack,
         onConfirmRegistration = { name, type, capacity ->
             viewModel.addMachine(name, type, capacity)
             onNavigateBack()
-        }
+        },
+        onShowAddCategory = { showAddCategoryDialog = true }
     )
+
+    if (showAddCategoryDialog) {
+        AddCategoryDialog(
+            onDismiss = { showAddCategoryDialog = false },
+            onConfirm = { name, type ->
+                viewModel.addCategory(name, type)
+                showAddCategoryDialog = false
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddMachineContent(
+    uiState: MachineUiState,
     onNavigateBack: () -> Unit,
-    onConfirmRegistration: (String, MachineType, Double) -> Unit
+    onConfirmRegistration: (String, MachineType, Double) -> Unit,
+    onShowAddCategory: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var type by remember { mutableStateOf(MachineType.WASHER) }
@@ -53,7 +68,7 @@ fun AddMachineContent(
     var brand by remember { mutableStateOf("") }
     var modelNumber by remember { mutableStateOf("") }
     
-    val equipmentTypes = remember { MachineType.entries }
+    val equipmentCategories = uiState.categories
 
     val scrollState = rememberScrollState()
 
@@ -128,17 +143,12 @@ fun AddMachineContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
-                        .clip(RoundedCornerShape(32.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(secondaryColor.copy(alpha = 0.15f), Color.Transparent)
-                            )
-                        ),
+                        .clip(RoundedCornerShape(32.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Surface(
-                            modifier = Modifier.size(80.dp),
+                            modifier = Modifier.size(120.dp),
                             color = secondaryColor,
                             shape = RoundedCornerShape(24.dp),
                             shadowElevation = 8.dp
@@ -147,15 +157,15 @@ fun AddMachineContent(
                                 Icon(
                                     imageVector = MachineUtils.getMachineIcon(type),
                                     contentDescription = null,
-                                    modifier = Modifier.size(40.dp),
+                                    modifier = Modifier.size(80.dp),
                                     tint = Color.White
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = type.name,
-                            style = MaterialTheme.typography.labelLarge.copy(
+                            text = MachineUtils.getMachineLabel(type),
+                            style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Black,
                                 color = secondaryColor,
                                 letterSpacing = 2.sp
@@ -166,25 +176,36 @@ fun AddMachineContent(
 
                 // 1. Equipment Type Selection (Modern Chips)
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Equipment Category",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Equipment Category",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            )
                         )
-                    )
+                        TextButton(onClick = onShowAddCategory) {
+                            Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Category", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                     
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        equipmentTypes.forEach { item ->
+                        equipmentCategories.forEach { category ->
                             FilterChip(
-                                selected = type == item,
-                                onClick = { type = item },
+                                selected = type == category.type,
+                                onClick = { type = category.type },
                                 label = { 
                                     Text(
-                                        item.name.lowercase().replaceFirstChar { it.uppercase() },
+                                        category.name,
                                         style = MaterialTheme.typography.labelLarge
                                     ) 
                                 },
@@ -196,7 +217,7 @@ fun AddMachineContent(
                                 ),
                                 border = FilterChipDefaults.filterChipBorder(
                                     enabled = true,
-                                    selected = type == item,
+                                    selected = type == category.type,
                                     borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                     selectedBorderColor = secondaryColor
                                 )
@@ -266,13 +287,91 @@ fun AddMachineContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddCategoryDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, MachineType) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf(MachineType.WASHER) }
+    var expanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Equipment Category", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Category Name") },
+                    placeholder = { Text("e.g. Industrial Washer") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = type.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Base Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryEditable, // Use PrimaryNotEditable if it's a read-only dropdown
+                            enabled = true
+                        ).fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        MachineType.entries.forEach { machineType ->
+                            DropdownMenuItem(
+                                text = { Text(machineType.name) },
+                                onClick = {
+                                    type = machineType
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { if (name.isNotBlank()) onConfirm(name, type) }) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 @Preview(showBackground = true)
 @Composable
 fun AddMachineScreenPreview() {
     FoldGoTheme {
         AddMachineContent(
+            uiState = MachineUiState(
+                categories = listOf(
+                    com.aesprt.foldgo.domain.model.MachineCategory("1", "Washer", MachineType.WASHER),
+                    com.aesprt.foldgo.domain.model.MachineCategory("2", "Dryer", MachineType.DRYER),
+                    com.aesprt.foldgo.domain.model.MachineCategory("3", "Washer & Dryer", MachineType.WASHER_DRYER)
+                )
+            ),
             onNavigateBack = {},
-            onConfirmRegistration = { _, _, _ -> }
+            onConfirmRegistration = { _, _, _ -> },
+            onShowAddCategory = {}
         )
     }
 }

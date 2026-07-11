@@ -15,6 +15,7 @@ class PreferenceManager(private val context: Context) {
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val CURRENT_SHOP_ID = stringPreferencesKey("current_shop_id")
         private val CURRENT_STAFF_ID = stringPreferencesKey("current_staff_id")
+        private val CURRENT_STAFF_NAME = stringPreferencesKey("current_staff_name")
     }
 
     val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data
@@ -54,6 +55,21 @@ class PreferenceManager(private val context: Context) {
                 preferences.remove(CURRENT_STAFF_ID)
             } else {
                 preferences[CURRENT_STAFF_ID] = staffId
+            }
+        }
+    }
+
+    val currentStaffName: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[CURRENT_STAFF_NAME]
+        }
+
+    suspend fun setCurrentStaffName(name: String?) {
+        context.dataStore.edit { preferences ->
+            if (name == null) {
+                preferences.remove(CURRENT_STAFF_NAME)
+            } else {
+                preferences[CURRENT_STAFF_NAME] = name
             }
         }
     }

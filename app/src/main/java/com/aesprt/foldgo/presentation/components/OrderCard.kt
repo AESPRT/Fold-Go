@@ -131,6 +131,7 @@ fun OrderCardPreview() {
                     intakePhotos = emptyList(),
                     machineId = null,
                     staffId = "staff1",
+                    staffName = "Operator 1",
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis()
                 ),

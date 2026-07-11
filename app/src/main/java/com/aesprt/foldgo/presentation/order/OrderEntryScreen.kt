@@ -17,8 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.core.util.PriceFormatter
+import com.aesprt.foldgo.domain.model.Service
 import com.aesprt.foldgo.domain.model.ServiceItem
 import com.aesprt.foldgo.presentation.components.ModernBackground
+import com.aesprt.foldgo.presentation.order.components.QuantityPromptDialog
 import com.aesprt.foldgo.presentation.order.components.ServiceAddDialog
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
@@ -31,39 +33,62 @@ fun OrderEntryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var serviceToPrompt by remember { mutableStateOf<Service?>(null) }
 
     OrderEntryContent(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
         onCustomerNameChange = viewModel::onCustomerNameChange,
         onPhoneNumberChange = viewModel::onPhoneNumberChange,
-        onAddItem = viewModel::addItem,
         onRemoveItem = viewModel::removeItem,
         onSaveOrder = viewModel::saveOrder,
         onClearError = viewModel::clearError,
-        onShowAddDialog = { showAddDialog = true }
+        onShowAddDialog = { showAddDialog = true },
+        onPromptService = { serviceToPrompt = it }
     )
 
     if (showAddDialog) {
         ServiceAddDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = viewModel::addItem
+            onConfirm = { name, qty, unit, price, type, saveAsPreset ->
+                viewModel.addItem(name, qty, unit, price, type)
+                if (saveAsPreset) {
+                    viewModel.addPredefinedService(name, qty, unit, price, type)
+                }
+            }
+        )
+    }
+
+    if (serviceToPrompt != null) {
+        QuantityPromptDialog(
+            service = serviceToPrompt!!,
+            onDismiss = { serviceToPrompt = null },
+            onConfirm = { qty ->
+                viewModel.addItem(
+                    serviceToPrompt!!.name,
+                    qty,
+                    serviceToPrompt!!.unit,
+                    serviceToPrompt!!.pricePerUnit,
+                    serviceToPrompt!!.type
+                )
+                serviceToPrompt = null
+            }
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun OrderEntryContent(
     uiState: OrderEntryUiState,
     onNavigateBack: () -> Unit,
     onCustomerNameChange: (String) -> Unit,
     onPhoneNumberChange: (String) -> Unit,
-    onAddItem: (String, Double, String, Double) -> Unit,
     onRemoveItem: (ServiceItem) -> Unit,
     onSaveOrder: () -> Unit,
     onClearError: () -> Unit,
-    onShowAddDialog: () -> Unit
+    onShowAddDialog: () -> Unit,
+    onPromptService: (Service) -> Unit
 ) {
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
@@ -161,31 +186,25 @@ fun OrderEntryContent(
                         }
                     }
 
-                    // Quick Add Preset (Example)
-                    Row(
+                    // Dynamic Quick Add Presets
+                    FlowRow(
                         modifier = Modifier.padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FilterChip(
-                            selected = false,
-                            onClick = { onAddItem("Wash & Dry", 1.0, "KG", 65.0) },
-                            label = {
-                                Text(
-                                    "Wash & Dry",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            }
-                        )
-                        FilterChip(
-                            selected = false,
-                            onClick = { onAddItem("Full Service", 5.0, "KG", 180.0) },
-                            label = {
-                                Text(
-                                    "Full Service",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            }
-                        )
+                        uiState.availableServices.forEach { service ->
+                            FilterChip(
+                                selected = false,
+                                onClick = { onPromptService(service) },
+                                label = {
+                                    Text(
+                                        service.name,
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
                     }
 
                     // Items List
@@ -314,11 +333,11 @@ fun OrderEntryContentPreview() {
             onNavigateBack = {},
             onCustomerNameChange = {},
             onPhoneNumberChange = {},
-            onAddItem = { _, _, _, _ -> },
             onRemoveItem = {},
             onSaveOrder = {},
             onClearError = {},
-            onShowAddDialog = {}
+            onShowAddDialog = {},
+            onPromptService = {}
         )
     }
 }

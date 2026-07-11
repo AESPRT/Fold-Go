@@ -7,26 +7,31 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.aesprt.foldgo.domain.model.ServiceType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceAddDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, qty: Double, unit: String, price: Double) -> Unit
+    onConfirm: (name: String, qty: Double, unit: String, price: Double, type: ServiceType, saveAsPreset: Boolean) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var qty by remember { mutableStateOf("1.0") }
     var unit by remember { mutableStateOf("KG") }
     var price by remember { mutableStateOf("") }
+    var serviceType by remember { mutableStateOf(ServiceType.WASH_DRY) }
+    var saveAsPreset by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Custom Service", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+        title = { Text("Add Service", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(scrollState),
@@ -40,6 +45,38 @@ fun ServiceAddDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = serviceType.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Service Category") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                            enabled = true
+                        ).fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        ServiceType.entries.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.name) },
+                                onClick = {
+                                    serviceType = type
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -68,6 +105,21 @@ fun ServiceAddDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Checkbox(
+                        checked = saveAsPreset,
+                        onCheckedChange = { saveAsPreset = it }
+                    )
+                    Text(
+                        "Save as predefined service",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
             }
         },
         confirmButton = {
@@ -76,7 +128,7 @@ fun ServiceAddDialog(
                     val q = qty.toDoubleOrNull() ?: 1.0
                     val p = price.toDoubleOrNull() ?: 0.0
                     if (name.isNotBlank()) {
-                        onConfirm(name, q, unit, p)
+                        onConfirm(name, q, unit, p, serviceType, saveAsPreset)
                         onDismiss()
                     }
                 },

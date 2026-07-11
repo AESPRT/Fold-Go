@@ -3,7 +3,7 @@ package com.aesprt.foldgo.presentation.splash
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.data.local.PreferenceManager
-import com.aesprt.foldgo.domain.repository.ShopRepository
+import com.aesprt.foldgo.domain.usecase.HasShopUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -17,7 +17,7 @@ sealed class SplashDestination {
 
 class SplashViewModel(
     private val preferenceManager: PreferenceManager,
-    private val shopRepository: ShopRepository
+    private val hasShopUseCase: HasShopUseCase
 ) : ViewModel() {
 
     suspend fun getNextDestination(): SplashDestination {
@@ -26,7 +26,7 @@ class SplashViewModel(
             return SplashDestination.Onboarding
         }
 
-        val hasShop = shopRepository.hasShop()
+        val hasShop = hasShopUseCase()
         if (!hasShop) {
             return SplashDestination.ShopRegistration
         }

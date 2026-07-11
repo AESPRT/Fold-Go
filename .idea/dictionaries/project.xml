@@ -2,6 +2,8 @@
   <dictionary name="project">
     <words>
       <w>foldgo</w>
+      <w>sendername</w>
+      <w>smsto</w>
     </words>
   </dictionary>
 </component>

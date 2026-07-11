@@ -2,12 +2,12 @@ package com.aesprt.foldgo.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aesprt.foldgo.core.util.IdGeneratorUtils
 import com.aesprt.foldgo.data.local.PreferenceManager
 import com.aesprt.foldgo.domain.model.Staff
-import com.aesprt.foldgo.domain.repository.StaffRepository
+import com.aesprt.foldgo.domain.usecase.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class StaffSelectionUiState(
     val staffList: List<Staff> = emptyList(),
@@ -17,7 +17,8 @@ data class StaffSelectionUiState(
 )
 
 class StaffSelectionViewModel(
-    private val staffRepository: StaffRepository,
+    private val getStaffByShopUseCase: GetStaffByShopUseCase,
+    private val upsertStaffUseCase: UpsertStaffUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -38,7 +39,7 @@ class StaffSelectionViewModel(
     private fun loadStaff(shopId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            staffRepository.getStaffByShop(shopId).collect { list ->
+            getStaffByShopUseCase(shopId).collect { list ->
                 _uiState.update { it.copy(staffList = list, isLoading = false) }
             }
         }
@@ -50,19 +51,20 @@ class StaffSelectionViewModel(
 
         viewModelScope.launch {
             val staff = Staff(
-                staffId = UUID.randomUUID().toString(),
+                staffId = IdGeneratorUtils.generateStaffId(),
                 shopId = shopId,
                 name = name,
                 role = role,
                 createdAt = System.currentTimeMillis()
             )
-            staffRepository.upsertStaff(staff)
+            upsertStaffUseCase(staff)
         }
     }
 
-    fun selectStaff(staffId: String) {
+    fun selectStaff(staff: Staff) {
         viewModelScope.launch {
-            preferenceManager.setCurrentStaffId(staffId)
+            preferenceManager.setCurrentStaffId(staff.staffId)
+            preferenceManager.setCurrentStaffName(staff.name)
         }
     }
 }

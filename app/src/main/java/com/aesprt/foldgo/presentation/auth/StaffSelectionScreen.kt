@@ -67,7 +67,7 @@ fun StaffSelectionScreen(
                         StaffItem(
                             staff = staff,
                             onClick = {
-                                viewModel.selectStaff(staff.staffId)
+                                viewModel.selectStaff(staff)
                                 onStaffSelected()
                             }
                         )

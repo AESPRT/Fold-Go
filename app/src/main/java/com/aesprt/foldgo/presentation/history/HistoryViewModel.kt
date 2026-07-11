@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
-import com.aesprt.foldgo.domain.repository.OrderRepository
+import com.aesprt.foldgo.domain.usecase.GetAllOrdersUseCase
 import kotlinx.coroutines.flow.*
 
 data class HistoryUiState(
@@ -13,10 +13,10 @@ data class HistoryUiState(
 )
 
 class HistoryViewModel(
-    private val repository: OrderRepository
+    private val getAllOrdersUseCase: GetAllOrdersUseCase
 ) : ViewModel() {
 
-    val uiState: StateFlow<HistoryUiState> = repository.getAllOrders()
+    val uiState: StateFlow<HistoryUiState> = getAllOrdersUseCase()
         .map { orders ->
             HistoryUiState(
                 orders = orders.filter { it.status == OrderStatus.DELIVERED }

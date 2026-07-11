@@ -14,13 +14,28 @@ enum class PaymentStatus {
     PENDING, PAID, PARTIAL
 }
 
+enum class ServiceType {
+    WASH, DRY, WASH_DRY, IRON, OTHER
+}
+
 @Serializable
 data class ServiceItem(
     val name: String,
     val quantity: Double,
     val unit: String,
     val pricePerUnit: Double,
-    val totalPrice: Double
+    val totalPrice: Double,
+    val type: ServiceType = ServiceType.WASH_DRY
+)
+
+data class Service(
+    val serviceId: String,
+    val shopId: String,
+    val name: String,
+    val defaultQuantity: Double,
+    val unit: String,
+    val pricePerUnit: Double,
+    val type: ServiceType = ServiceType.WASH_DRY
 )
 
 data class Order(
@@ -40,13 +55,22 @@ data class Order(
     val intakePhotos: List<String>,
     val machineId: String?,
     val staffId: String,
+    val staffName: String,
     val createdAt: Long,
     val updatedAt: Long
 )
 
 enum class MachineType {
-    WASHER, DRYER, IRON, STEAMER
+    WASHER, DRYER, WASHER_DRYER, IRON, STEAMER
 }
+
+data class MachineCategory(
+    val categoryId: String,
+    val name: String,
+    val type: MachineType,
+    val iconName: String? = null,
+    val colorHex: String? = null
+)
 
 enum class MachineStatus {
     IDLE, BUSY, OUT_OF_ORDER

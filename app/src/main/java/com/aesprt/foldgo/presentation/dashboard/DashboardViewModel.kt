@@ -7,13 +7,8 @@ import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
 import com.aesprt.foldgo.domain.repository.MachineRepository
 import com.aesprt.foldgo.domain.repository.OrderRepository
-import com.aesprt.foldgo.domain.usecase.GetActiveOrdersUseCase
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import com.aesprt.foldgo.domain.usecase.*
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 data class OrderWithMachine(
@@ -30,13 +25,15 @@ data class DashboardUiState(
 )
 
 class DashboardViewModel(
-    private val repository: OrderRepository,
-    private val machineRepository: MachineRepository
+    private val getAllOrdersUseCase: GetAllOrdersUseCase,
+    private val getMachinesUseCase: GetMachinesUseCase,
+    private val finishMachineCycleUseCase: FinishMachineCycleUseCase,
+    private val upsertOrderUseCase: UpsertOrderUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<DashboardUiState> = combine(
-        repository.getAllOrders(),
-        machineRepository.getAllMachines()
+        getAllOrdersUseCase(),
+        getMachinesUseCase()
     ) { orders, machines ->
         val activeOrders = orders.filter { it.status != OrderStatus.DELIVERED }
         val ordersWithMachines = activeOrders.map { order ->
@@ -58,12 +55,12 @@ class DashboardViewModel(
 
     fun autoFinishCycle(machineId: String) {
         viewModelScope.launch {
-            machineRepository.finishMachineCycle(machineId)
-            val orders = repository.getAllOrders().first()
+            finishMachineCycleUseCase(machineId)
+            val orders = getAllOrdersUseCase().first()
             val associatedOrder = orders.find { it.machineId == machineId && (it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING) }
             associatedOrder?.let { order ->
                 val nextStatus = if (order.status == OrderStatus.WASHING) OrderStatus.WASHED else OrderStatus.DRIED
-                repository.upsertOrder(order.copy(
+                upsertOrderUseCase(order.copy(
                     status = nextStatus,
                     machineId = null,
                     updatedAt = System.currentTimeMillis()

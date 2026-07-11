@@ -18,6 +18,7 @@ import com.aesprt.foldgo.domain.model.MachineStatus
 import com.aesprt.foldgo.domain.model.MachineType
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.ServiceType
 
 @Composable
 fun MachineStatusDialog(
@@ -34,12 +35,12 @@ fun MachineStatusDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
+        title = {
             Text(
                 text = if (showStartCycleConfig) "Start Cycle: ${machine.name}" else "Update Status: ${machine.name}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
-            ) 
+            )
         },
         text = {
             if (showStartCycleConfig) {
@@ -105,7 +106,10 @@ fun MachineStatusDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = if (showStartCycleConfig) { { showStartCycleConfig = false } } else onDismiss) { 
+            TextButton(
+                onClick = if (showStartCycleConfig) {
+                    { showStartCycleConfig = false }
+                } else onDismiss) {
                 Text(
                     text = if (showStartCycleConfig) "Back" else "Cancel",
                     style = MaterialTheme.typography.labelLarge,
@@ -128,7 +132,9 @@ private fun StartCycleConfig(
     onDurationChange: (String) -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         OutlinedTextField(
@@ -144,11 +150,32 @@ private fun StartCycleConfig(
 
         // Filter orders based on machine type and current status
         val validOrders = activeOrders.filter { order ->
+            val hasWashOnlyItems = order.items.any { it.type == ServiceType.WASH }
+            val hasDryOnlyItems = order.items.any { it.type == ServiceType.DRY }
+            val hasWashDryItems = order.items.any { it.type == ServiceType.WASH_DRY }
+            val hasIronItems = order.items.any { it.type == ServiceType.IRON }
+
             when (machineType) {
-                MachineType.WASHER -> order.status == OrderStatus.INTAKE
-                MachineType.DRYER -> order.status == OrderStatus.WASHED
-                MachineType.IRON -> order.status == OrderStatus.DRIED
-                else -> false
+                MachineType.WASHER -> order.status == OrderStatus.INTAKE && hasWashOnlyItems
+                MachineType.DRYER -> {
+                    (order.status == OrderStatus.INTAKE && hasDryOnlyItems) ||
+                            (order.status == OrderStatus.WASHED && hasDryOnlyItems)
+                }
+
+                MachineType.WASHER_DRYER -> {
+                    order.status == OrderStatus.INTAKE && hasWashDryItems
+                }
+
+                MachineType.IRON, MachineType.STEAMER -> {
+                    val needsWash = hasWashOnlyItems || hasWashDryItems
+                    val needsDry = hasDryOnlyItems || hasWashDryItems
+                    when (order.status) {
+                        OrderStatus.INTAKE -> hasIronItems && !needsWash && !needsDry
+                        OrderStatus.WASHED -> hasIronItems && !needsDry
+                        OrderStatus.DRIED -> hasIronItems
+                        else -> false
+                    }
+                }
             }
         }
 
@@ -162,10 +189,12 @@ private fun StartCycleConfig(
                 readOnly = true,
                 label = { Text("Associated Order", style = MaterialTheme.typography.bodyMedium) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor(
-                    type = ExposedDropdownMenuAnchorType.PrimaryEditable, // Use PrimaryNotEditable if it's a read-only dropdown
-                    enabled = true
-                ).fillMaxWidth(),
+                modifier = Modifier
+                    .menuAnchor(
+                        type = ExposedDropdownMenuAnchorType.PrimaryEditable, // Use PrimaryNotEditable if it's a read-only dropdown
+                        enabled = true
+                    )
+                    .fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
             ExposedDropdownMenu(
@@ -181,22 +210,27 @@ private fun StartCycleConfig(
                 )
                 validOrders.forEach { order ->
                     DropdownMenuItem(
-                        text = { Text("${order.orderNumber} - ${order.customerName}", style = MaterialTheme.typography.bodyLarge) },
+                        text = {
+                            Text(
+                                "${order.orderNumber} - ${order.customerName}",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        },
                         onClick = {
                             onOrderSelected(order.orderId)
                             expanded = false
                         }
                     )
                 }
-                
+
                 if (validOrders.isEmpty()) {
                     DropdownMenuItem(
-                        text = { 
+                        text = {
                             Text(
                                 MachineUtils.getMachineSelectionMenuMessage(machineType),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.outline
-                            ) 
+                            )
                         },
                         onClick = { expanded = false },
                         enabled = false
@@ -204,9 +238,10 @@ private fun StartCycleConfig(
                 }
             }
         }
-        
+
         // Validation Warning
-        val ordersInProgress = activeOrders.filter { it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING }
+        val ordersInProgress =
+            activeOrders.filter { it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING }
         if (ordersInProgress.isNotEmpty()) {
             Text(
                 text = "Note: Active orders in cycles are hidden to prevent duplicates.",
@@ -247,8 +282,16 @@ private fun StatusOption(
                 }
             }
             Column {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

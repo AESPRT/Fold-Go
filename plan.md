@@ -1,79 +1,60 @@
 # Fold&Go: Senior Technical Blueprint & UI/UX Specification
-## Mobile-First Offline-First Laundry Management System
+## Multi-Platform Laundry Management Ecosystem (Mobile + Web Admin)
 
 ---
 
-### 1. Senior Architectural Strategy: Modern Android Stack
+### 1. System Architecture & Scope
 
-**Fold&Go** leverages a "Clean Architecture" approach, ensuring the core business logic is independent of UI, database, or external agencies.
+**Fold&Go** is a dual-surface ecosystem designed for real-time laundry operations. It follows a **Configuration-Centralized** model where the Web Admin manages the business infrastructure and the Mobile App executes the daily operations.
 
-#### Core Technology Stack
-*   **Language:** Kotlin with Coroutines and Flow for asynchronous operations.
-*   **UI Framework:** Jetpack Compose with Material 3 (Material Design 3).
-*   **Local Storage:** Room Persistence Library (SQLite) as the Absolute Source of Truth (ASOT).
-*   **Remote Sync:** Firebase Cloud Firestore for real-time multi-device synchronization.
-*   **Background Processing:** WorkManager for reliable data synchronization and scheduled tasks.
-*   **Dependency Injection:** Koin for lightweight and pragmatic dependency management.
-*   **Navigation:** Type-Safe Jetpack Compose Navigation.
+#### Project Scope
+*   **Web Admin (Owner-Centric):** The "Control Center". Handles creation and configuration of Shops, Staff, Machines, Services, and Inventory.
+*   **Mobile App (Operator-Centric):** The "Operation Center". Synchronizes configuration data down from the server based on the logged-in Shop. Focuses exclusively on Order Intake, Processing, and Fulfillment.
+*   **Backend (.NET Core + PostgreSQL):** The "Source of Truth". Provides REST APIs for the Web Admin (Full CRUD) and the Mobile App (Sync-Down for Config, Sync-Up for Transactions).
 
-#### Synchronization & Resiliency (The "Atomic Sync" Pattern)
-*   **The Sync Outbox:** Every local mutation (Insert/Update/Delete) is wrapped in a Room Transaction that also records the change in a `sync_outbox` table.
-*   **WorkManager Sync Engine:** A `CoroutineWorker` monitors the outbox. It performs exponential backoff and handles network constraints, ensuring data eventually reaches Firestore.
-*   **Conflict Resolution:** Timestamp-based "Last Write Wins" (LWW) strategy implemented at the Repository level.
-*   **Reactive UI:** ViewModels observe Room `Flows`. When WorkManager updates Room with remote changes, the UI reacts instantly without manual refreshes.
+#### Technology Stack
+*   **Mobile:** Kotlin 2.4.0, Jetpack Compose, Room 2.8.4, Koin 4.2.2.
+*   **Web:** React (Vite), TypeScript, Tailwind CSS.
+*   **Backend:** .NET Core 9.0 (EF Core), PostgreSQL, SignalR (Real-time monitoring).
 
 ---
 
-### 2. Senior UI/UX Design System: "Clean & Fresh"
+### 2. Synchronization Architecture
 
-#### Design Philosophy
-The UI must be **Operator-Optimized**. Laundry environments are humid, busy, and often involve handheld use.
-*   **Touch Targets:** Minimum 48dp for all interactive elements.
-*   **Contrast:** High contrast ratios to ensure readability under bright shop lights.
-*   **Visual Hierarchy:** Use color and size to emphasize the most common action (e.g., "New Order").
+```mermaid
+graph TD
+    subgraph "Server Layer (.NET + PostgreSQL)"
+        DB[(PostgreSQL)]
+        API[Web API]
+    end
 
-#### Color Palette (Clean & Fresh)
-*   **Primary:** `Deep Ocean Blue (#005CBB)` - Reliability and Professionalism.
-*   **Secondary:** `Mint Green (#00C853)` - Cleanliness and Completion.
-*   **Status Colors:**
-    *   `Intake/Pending:` Amber (#FFAB00)
-    *   `Processing (Wash/Dry):` Sky Blue (#03A9F4)
-    *   `Ready for Pickup:` Emerald Green (#4CAF50)
-    *   `Alert/Error:` Crimson Red (#D32F2F)
+    subgraph "Web Admin (React)"
+        WA[Web Portal]
+        WA -->|Create/Manage| API
+    end
 
-#### Key UI Components
-*   **Order Kanban Dashboard:** A high-level view of all orders grouped by stage (Intake, Washing, Drying, Ready).
-*   **Machine Matrix Grid:** Visual representation of physical machines with countdown timers and status indicators.
-*   **The "Quick Ingest" FAB:** A prominent Floating Action Button for 3-tap order creation.
+    subgraph "Mobile App (Compose)"
+        MA[Android App]
+        SYNC[WorkManager Sync]
+        ROOM[(Local Room DB)]
+        
+        API -->|Sync Down: Config| SYNC
+        SYNC --> ROOM
+        MA -->|Sync Up: Orders| API
+    end
 
----
-
-### 3. Expanded Feature Set
-
-#### A. Smart POS & Intake
-*   **Dynamic Pricing Engine:** Support for weight-based (kg), piece-based, and service-based (e.g., "Dry Clean") pricing.
-*   **Photo Evidence:** Capture photos of high-value items at intake to document pre-existing conditions (built-in CameraX integration).
-*   **Loyalty & Customer CRM:** Automatic customer profile creation via phone number. Track visit frequency and implement "10th Wash Free" logic.
-
-#### B. Intelligent Machine Lifecycle
-*   **Utility Tracking:** Log which machine (Brand/ID) was used for each order.
-*   **Maintenance Alerts:** Notify managers after X cycles to perform lint cleaning or descaling.
-*   **Cycle Overlap Prevention:** Prevent assigning two orders to the same machine simultaneously.
-
-#### C. Financial & Staff Governance
-*   **Shift Handover Ledger:** Forced digital "Cash Count" at the start and end of shifts. Discrepancies are flagged immediately to the owner.
-*   **Performance Metrics:** Track "Orders Processed" and "Average Turnaround Time" per staff member.
-*   **Expense Tracker:** Log daily out-of-pocket expenses (e.g., buying detergent from a local store).
-
-#### D. Customer Engagement
-*   **Omnichannel Notifications:** Automated status updates via WhatsApp/SMS (Server-side triggers based on Firestore state changes).
-*   **QR Code Tracking:** Print/Show a QR code that customers can scan to see their order progress on a simple web status page.
+    WA -.->|Monitor Orders| API
+```
 
 ---
 
-### 4. Refined Database Schema (Unified Entity Models)
+### 3. Current Data Schema (Source: Entities.kt)
 
-#### Entity: `shops` (Owner's Root)
+These entities are shared between the PostgreSQL schema and the Mobile Room database.
+
+#### A. Configuration Entities (Sync Down to Mobile)
+*Mobile app no longer handles creation for these.*
+
 ```kotlin
 @Entity(tableName = "shops")
 data class ShopEntity(
@@ -81,68 +62,142 @@ data class ShopEntity(
     val name: String,
     val address: String,
     val ownerId: String,
-    val settings: String, // JSON for business hours, tax rates, etc.
+    val pin: String,
+    val settings: String, // JSON configuration
     val createdAt: Long
 )
-```
 
-#### Entity: `machines` (Equipment Inventory)
-```kotlin
+@Entity(tableName = "staff")
+data class StaffEntity(
+    @PrimaryKey val staffId: String,
+    val shopId: String,
+    val name: String,
+    val role: String,
+    val isActive: Boolean,
+    val createdAt: Long
+)
+
+@Entity(tableName = "machine_categories")
+data class MachineCategoryEntity(
+    @PrimaryKey val categoryId: String,
+    val name: String,
+    val type: MachineType,
+    val iconName: String?,
+    val colorHex: String?
+)
+
 @Entity(tableName = "machines")
 data class MachineEntity(
     @PrimaryKey val machineId: String,
     val shopId: String,
-    val name: String, // e.g., "Washer 01"
-    val type: String, // WASHER | DRYER
+    val name: String,
+    val type: MachineType,
     val capacityKg: Double,
-    val status: String, // IDLE | BUSY | OUT_OF_ORDER
-    val lastMaintenanceDate: Long
+    val status: MachineStatus,
+    val lastMaintenanceDate: Long,
+    val endTime: Long?,
+    val cyclesCount: Int
+)
+
+@Entity(tableName = "services")
+data class ServiceEntity(
+    @PrimaryKey val serviceId: String,
+    val shopId: String,
+    val name: String,
+    val defaultQuantity: Double,
+    val unit: String,
+    val pricePerUnit: Double,
+    val type: ServiceType
+)
+
+@Entity(tableName = "inventory")
+data class InventoryEntity(
+    @PrimaryKey val itemId: String,
+    val shopId: String,
+    val name: String,
+    val currentStock: Double,
+    val unit: String,
+    val lowStockThreshold: Double
 )
 ```
 
-#### Entity: `orders` (Transaction Core)
+#### B. Transactional Entities (Sync Up to Server)
 ```kotlin
 @Entity(tableName = "orders")
 data class OrderEntity(
     @PrimaryKey val orderId: String,
     val shopId: String,
     val customerId: String,
-    val orderNumber: String, // Human-readable (e.g., "FG-1023")
-    val itemsJson: String, // List of ServiceItem (Name, Qty, Price)
+    val customerName: String,
+    val customerPhone: String,
+    val orderNumber: String,
+    val itemsJson: String,
     val totalAmount: Double,
     val paidAmount: Double,
-    val status: OrderStatus, // INTAKE, WASHING, DRYING, FOLDING, READY, DELIVERED
-    val intakePhotosJson: String?, // List of Image URLs
-    val machineId: String?, // Currently assigned machine
-    val staffId: String, // Staff who created the order
+    val changeDue: Double,
+    val status: OrderStatus,
+    val deliveryMethod: DeliveryMethod,
+    val paymentStatus: PaymentStatus,
+    val machineId: String?,
+    val staffId: String,
+    val staffName: String,
     val createdAt: Long,
     val updatedAt: Long,
     val isSynced: Boolean = false
 )
 ```
 
-#### Entity: `inventory` (Supplies)
-```kotlin
-@Entity(tableName = "inventory")
-data class InventoryEntity(
-    @PrimaryKey val itemId: String,
-    val shopId: String,
-    val name: String, // e.g., "Detergent X"
-    val currentStock: Double,
-    val unit: String, // L, KG, PCS
-    val lowStockThreshold: Double
-)
-```
+---
 
-#### Entity: `sync_outbox` (Resiliency Ledger)
-```kotlin
-@Entity(tableName = "sync_outbox")
-data class SyncOutboxEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val entityType: String, // "order", "machine", "inventory"
-    val entityId: String,
-    val operation: String, // INSERT, UPDATE, DELETE
-    val payloadJson: String, // Full snapshot or delta
-    val createdAt: Long
-)
-```
+### 4. API Endpoints Specification (.NET Core API)
+
+#### A. Auth & Shop Setup (Shared)
+*   `POST /api/auth/login` - User authentication (Web Admin).
+*   `POST /api/auth/shop-login` - PIN-based authentication for Mobile (returns `shopId` + JWT).
+
+#### B. Configuration API (Web: CRUD | Mobile: GET)
+*   `GET/POST/PUT/DELETE /api/shops` - Management of shop branches.
+*   `GET/POST/PUT/DELETE /api/staff?shopId={id}` - Management of operators and PIN codes.
+*   `GET/POST/PUT/DELETE /api/machines?shopId={id}` - Registration and configuration of hardware.
+*   `GET/POST/PUT/DELETE /api/services?shopId={id}` - Service menu and pricing definition.
+*   `GET/POST/PUT/DELETE /api/inventory?shopId={id}` - Stock level management and thresholds.
+
+#### C. Synchronization API (Mobile Sync-Down)
+*   `GET /api/sync/config?shopId={id}` - Single bundle fetch of all `Staff`, `Machines`, `Services`, and `Inventory` for the local database refresh.
+
+#### D. Transactional API (Mobile Sync-Up | Web: View)
+*   `POST /api/orders` - Submit new orders (Sync up from Mobile).
+*   `PATCH /api/orders/{id}/status` - Update order progress (Sync up from Mobile).
+*   `GET /api/orders?shopId={id}` - Fetch historical or live orders (Web Admin / Mobile).
+*   `GET /api/reports/sales?shopId={id}&range={from-to}` - Revenue data for Web Admin analytics.
+
+---
+
+### 5. Operational Flows
+
+#### A. Setup & Sync Flow (New Strategy)
+1.  **Web Admin:** Owner logs in, creates a `Shop`, adds `Staff`, registers `Machines`, and defines `Services` + `Pricing`.
+2.  **Mobile Login:** Operator enters Shop Credentials/PIN.
+3.  **Initial Sync:** Mobile app calls `GET /api/sync/config` to fetch all setup data.
+4.  **Local Storage:** Room DB is populated. Mobile app is now ready for offline-first order intake.
+
+#### B. Order Lifecycle (Mobile)
+1.  **Intake:** Select from synced `Services`. Save locally.
+2.  **Execution:** Assign to synced `Machines`.
+3.  **Sync Up:** `SyncOutboxEntity` triggers `POST /api/orders` to push data to the cloud.
+
+---
+
+### 6. Web Admin Features (React + .NET)
+
+*   **Creation Wizard:** Interactive flow to set up a new shop from scratch.
+*   **Live Dashboard:** Real-time `OrderStatus` updates via SignalR connection to the API.
+*   **Machine Health:** Monitor `cyclesCount` and maintenance needs synced from the shop floor.
+
+---
+
+### 7. Senior Design System: "Clean & Fresh"
+
+*   **Primary:** `Deep Ocean Blue (#005CBB)` - Reliability.
+*   **Mobile:** Focus on tactile speed. Minimal typing, maximum selection.
+*   **Web:** Focus on data density, filtering, and exportable reports.

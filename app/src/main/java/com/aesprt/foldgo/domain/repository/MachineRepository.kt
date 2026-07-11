@@ -1,6 +1,7 @@
 package com.aesprt.foldgo.domain.repository
 
 import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.MachineCategory
 import kotlinx.coroutines.flow.Flow
 
 interface MachineRepository {
@@ -9,4 +10,7 @@ interface MachineRepository {
     suspend fun updateMachineStatus(machineId: String, status: String)
     suspend fun startMachineCycle(machineId: String, durationMinutes: Int)
     suspend fun finishMachineCycle(machineId: String)
+    
+    fun getAllCategories(): Flow<List<MachineCategory>>
+    suspend fun upsertCategory(category: MachineCategory)
 }

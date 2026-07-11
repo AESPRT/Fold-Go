@@ -2,14 +2,14 @@ package com.aesprt.foldgo.presentation.shop
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aesprt.foldgo.core.util.IdGeneratorUtils
 import com.aesprt.foldgo.data.local.PreferenceManager
 import com.aesprt.foldgo.domain.model.Shop
-import com.aesprt.foldgo.domain.repository.ShopRepository
+import com.aesprt.foldgo.domain.usecase.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class ShopRegistrationUiState(
     val shopName: String = "",
@@ -22,7 +22,7 @@ data class ShopRegistrationUiState(
 )
 
 class ShopRegistrationViewModel(
-    private val shopRepository: ShopRepository,
+    private val upsertShopUseCase: UpsertShopUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -57,17 +57,17 @@ class ShopRegistrationViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val shopId = UUID.randomUUID().toString().take(8).uppercase() // Simpler Shop ID for user
+                val shopId = IdGeneratorUtils.generateShopId()
                 val shop = Shop(
                     shopId = shopId,
                     name = state.shopName,
                     address = state.address,
-                    ownerId = "owner_${state.ownerName}",
+                    ownerId = IdGeneratorUtils.generateUniqueId("owner"),
                     pin = state.pin,
                     settings = emptyMap(),
                     createdAt = System.currentTimeMillis()
                 )
-                shopRepository.upsertShop(shop)
+                upsertShopUseCase(shop)
                 preferenceManager.setCurrentShopId(shopId)
                 _uiState.update { it.copy(isLoading = false, isSuccess = true) }
             } catch (e: Exception) {

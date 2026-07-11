@@ -231,6 +231,7 @@ fun DashboardContentPreview() {
                             intakePhotos = emptyList(),
                             machineId = null,
                             staffId = "staff1",
+                            staffName = "Operator 1",
                             createdAt = System.currentTimeMillis(),
                             updatedAt = System.currentTimeMillis()
                         ),
@@ -251,6 +252,7 @@ fun DashboardContentPreview() {
                             intakePhotos = emptyList(),
                             machineId = "M1",
                             staffId = "staff1",
+                            staffName = "Operator 1",
                             createdAt = System.currentTimeMillis(),
                             updatedAt = System.currentTimeMillis()
                         ),
