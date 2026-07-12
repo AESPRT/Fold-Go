@@ -1,9 +1,8 @@
 package com.aesprt.foldgo.data.repository
 
 import com.aesprt.foldgo.data.local.dao.ServiceDao
-import com.aesprt.foldgo.data.local.entities.toDomain
-import com.aesprt.foldgo.data.local.entities.toEntity
 import com.aesprt.foldgo.domain.model.Service
+import com.aesprt.foldgo.data.local.entities.*
 import com.aesprt.foldgo.domain.repository.ServiceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

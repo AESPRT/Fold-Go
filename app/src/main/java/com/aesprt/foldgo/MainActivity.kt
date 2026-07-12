@@ -1,6 +1,7 @@
 package com.aesprt.foldgo
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -20,17 +21,34 @@ import androidx.navigation.compose.rememberNavController
 import com.aesprt.foldgo.presentation.components.FoldGoBottomBar
 import com.aesprt.foldgo.ui.navigation.*
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
+import com.aesprt.foldgo.data.local.PreferenceManager
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
+    private val notificationOrderId = MutableStateFlow<String?>(null)
+    private val preferenceManager: PreferenceManager by inject()
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
+    ) { _: Boolean ->
         // Handle permission result if needed
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra("orderId")?.let {
+            notificationOrderId.value = it
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        intent.getStringExtra("orderId")?.let {
+            notificationOrderId.value = it
+        }
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
@@ -43,10 +61,24 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            FoldGoTheme {
+            val isDarkMode by preferenceManager.isDarkModeEnabled.collectAsState(initial = false)
+
+            FoldGoTheme(darkTheme = isDarkMode) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination?.route
+
+                val orderIdToNavigate by notificationOrderId.collectAsState()
+
+                LaunchedEffect(orderIdToNavigate) {
+                    orderIdToNavigate?.let { id ->
+                        navController.navigate(OrderDetailRoute(id)) {
+                            // Ensure we don't have multiple copies of order details on stack
+                            launchSingleTop = true
+                        }
+                        notificationOrderId.value = null
+                    }
+                }
 
                 // Only show bottom bar for primary menu routes
                 val menuRoutes = listOf(
@@ -81,12 +113,10 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     // Navigation Host handles its own background internally.
-                    // We only apply the bottom padding to avoid content being hidden by the bottom bar.
-                    // The top padding is handled by the screens' TopAppBar to ensure the background
-                    // extends behind the status bar.
+                    // We fill max size to allow backgrounds to extend behind bottom bar.
                     FoldGoNavHost(
                         navController = navController,
-                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }

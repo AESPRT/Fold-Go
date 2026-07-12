@@ -16,6 +16,10 @@ class PreferenceManager(private val context: Context) {
         private val CURRENT_SHOP_ID = stringPreferencesKey("current_shop_id")
         private val CURRENT_STAFF_ID = stringPreferencesKey("current_staff_id")
         private val CURRENT_STAFF_NAME = stringPreferencesKey("current_staff_name")
+        private val SMS_ENABLED = booleanPreferencesKey("sms_enabled")
+        private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        private val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
+        private val SMS_CREDITS = intPreferencesKey("sms_credits")
     }
 
     val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data
@@ -70,6 +74,43 @@ class PreferenceManager(private val context: Context) {
                 preferences.remove(CURRENT_STAFF_NAME)
             } else {
                 preferences[CURRENT_STAFF_NAME] = name
+            }
+        }
+    }
+
+    val isSmsEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[SMS_ENABLED] ?: true }
+
+    suspend fun setSmsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SMS_ENABLED] = enabled }
+    }
+
+    val isNotificationsEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[NOTIFICATIONS_ENABLED] ?: true }
+
+    suspend fun setNotificationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[NOTIFICATIONS_ENABLED] = enabled }
+    }
+
+    val isDarkModeEnabled: Flow<Boolean> = context.dataStore.data
+        .map { it[DARK_MODE_ENABLED] ?: false }
+
+    suspend fun setDarkModeEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[DARK_MODE_ENABLED] = enabled }
+    }
+
+    val smsCredits: Flow<Int> = context.dataStore.data
+        .map { it[SMS_CREDITS] ?: 0 }
+
+    suspend fun setSmsCredits(credits: Int) {
+        context.dataStore.edit { it[SMS_CREDITS] = credits }
+    }
+
+    suspend fun deductSmsCredit() {
+        context.dataStore.edit { preferences ->
+            val current = preferences[SMS_CREDITS] ?: 0
+            if (current > 0) {
+                preferences[SMS_CREDITS] = current - 1
             }
         }
     }

@@ -1,6 +1,8 @@
 package com.aesprt.foldgo.data.local.entities
 
+import com.aesprt.foldgo.data.local.entities.models.InventoryEntity
 import com.aesprt.foldgo.domain.model.Inventory
+import com.aesprt.foldgo.domain.model.enums.*
 
 fun InventoryEntity.toDomain() = Inventory(
     itemId = itemId,

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.enums.OrderStatus
 import com.aesprt.foldgo.domain.repository.MachineRepository
 import com.aesprt.foldgo.domain.repository.OrderRepository
 import com.aesprt.foldgo.domain.usecase.*
@@ -53,13 +53,23 @@ class DashboardViewModel(
             initialValue = DashboardUiState(isLoading = true)
         )
 
-    fun autoFinishCycle(machineId: String) {
+    fun autoFinishCycle(machineId: String, orderId: String) {
         viewModelScope.launch {
             finishMachineCycleUseCase(machineId)
             val orders = getAllOrdersUseCase().first()
-            val associatedOrder = orders.find { it.machineId == machineId && (it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING) }
+            val associatedOrder = orders.find { it.machineId == machineId && it.orderId == orderId && (it.status == OrderStatus.WASHING_AND_DRYING ||it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING) }
             associatedOrder?.let { order ->
-                val nextStatus = if (order.status == OrderStatus.WASHING) OrderStatus.WASHED else OrderStatus.DRIED
+                val nextStatus = when (order.status) {
+                    OrderStatus.WASHING_AND_DRYING -> {
+                        OrderStatus.WASHED_AND_DRIED
+                    }
+                    OrderStatus.WASHING -> {
+                        OrderStatus.WASHED
+                    }
+                    else -> {
+                        OrderStatus.DRIED
+                    }
+                }
                 upsertOrderUseCase(order.copy(
                     status = nextStatus,
                     machineId = null,

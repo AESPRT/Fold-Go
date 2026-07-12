@@ -15,7 +15,12 @@ import com.aesprt.foldgo.presentation.machines.MachineMatrixScreen
 import com.aesprt.foldgo.presentation.onboarding.OnboardingScreen
 import com.aesprt.foldgo.presentation.order.OrderDetailScreen
 import com.aesprt.foldgo.presentation.order.OrderEntryScreen
+import com.aesprt.foldgo.presentation.services.ServicesScreen
+import com.aesprt.foldgo.presentation.settings.AppearanceScreen
+import com.aesprt.foldgo.presentation.settings.NotificationSettingsScreen
+import com.aesprt.foldgo.presentation.settings.SMSSettingsScreen
 import com.aesprt.foldgo.presentation.settings.SettingsScreen
+import com.aesprt.foldgo.presentation.shop.ShopInfoScreen
 import com.aesprt.foldgo.presentation.shop.ShopRegistrationScreen
 import com.aesprt.foldgo.presentation.splash.SplashScreen
 import kotlinx.serialization.Serializable
@@ -58,6 +63,21 @@ object HistoryRoute
 
 @Serializable
 object SettingsRoute
+
+@Serializable
+object ShopInfoRoute
+
+@Serializable
+object ServicesRoute
+
+@Serializable
+object SMSRoute
+
+@Serializable
+object NotificationsRoute
+
+@Serializable
+object AppearanceRoute
 
 @Composable
 fun FoldGoNavHost(
@@ -193,7 +213,58 @@ fun FoldGoNavHost(
         }
 
         composable<SettingsRoute> {
-            SettingsScreen()
+            SettingsScreen(
+                onLogout = {
+                    navController.navigate(StaffSelectionRoute) {
+                        popUpTo(DashboardRoute) { inclusive = true }
+                    }
+                },
+                onNavigateToShopInfo = {
+                    navController.navigate(ShopInfoRoute)
+                },
+                onNavigateToServices = {
+                    navController.navigate(ServicesRoute)
+                },
+                onNavigateToSMS = {
+                    navController.navigate(SMSRoute)
+                },
+                onNavigateToNotifications = {
+                    navController.navigate(NotificationsRoute)
+                },
+                onNavigateToAppearance = {
+                    navController.navigate(AppearanceRoute)
+                }
+            )
+        }
+
+        composable<ShopInfoRoute> {
+            ShopInfoScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<ServicesRoute> {
+            ServicesScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<SMSRoute> {
+            SMSSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<NotificationsRoute> {
+            NotificationSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<AppearanceRoute> {
+            AppearanceScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable<OrderDetailRoute> { backStackEntry ->

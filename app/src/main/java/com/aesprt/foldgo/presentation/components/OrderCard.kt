@@ -14,7 +14,7 @@ import com.aesprt.foldgo.core.util.OrderStatusUtils
 import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.enums.OrderStatus
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -87,7 +87,8 @@ fun OrderCard(
             
             Text(
                 text = "Items: ${order.items.size}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

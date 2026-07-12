@@ -1,9 +1,10 @@
 package com.aesprt.foldgo.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -30,7 +31,7 @@ private val DarkColorScheme = darkColorScheme(
     surface = SurfaceDark,
     onSurface = OnSurfaceDark,
     surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = OnSurfaceDark.copy(alpha = 0.7f),
+    onSurfaceVariant = OnSurfaceDark.copy(alpha = 0.85f),
     
     error = ErrorCrimsonRed,
     onError = Color.White
@@ -63,8 +64,8 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun FoldGoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Dynamic color disabled by default for consistent branding
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -79,7 +80,12 @@ fun FoldGoTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+        typography = Typography
+    ) {
+        Surface(
+            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+            color = colorScheme.background,
+            content = content
+        )
+    }
 }

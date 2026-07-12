@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -9,6 +12,18 @@ android {
     namespace = "com.aesprt.foldgo"
     compileSdk = 37
 
+    // 1. Read the local.properties file safely
+    val localProperties = Properties().apply {
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            load(FileInputStream(localPropertiesFile))
+        }
+    }
+
+    // 2. Fetch the API key (fallback to empty string if missing)
+    val httpSmsApiKey = localProperties.getProperty("http_sms_api_key") ?: "\"\""
+    val semaphoreApiKey = localProperties.getProperty("semaphore_api_key") ?: "\"\""
+
     defaultConfig {
         applicationId = "com.aesprt.foldgo"
         minSdk = 26
@@ -18,6 +33,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 3. Inject it into BuildConfig
+        // Syntax: buildConfigField(Type, Name, Value)
+        buildConfigField("String", "HTTP_SMS_API_KEY", "\"${httpSmsApiKey}\"")
+        buildConfigField("String", "SEMAPHORE_API_KEY", "\"${semaphoreApiKey}\"")
     }
 
     buildTypes {
@@ -35,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

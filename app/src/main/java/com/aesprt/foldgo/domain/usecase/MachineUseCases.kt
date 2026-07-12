@@ -26,7 +26,7 @@ class UpdateMachineStatusUseCase(private val repository: MachineRepository) {
 }
 
 class StartMachineCycleUseCase(private val repository: MachineRepository) {
-    suspend operator fun invoke(machineId: String, durationMinutes: Int) = repository.startMachineCycle(machineId, durationMinutes)
+    suspend operator fun invoke(machineId: String, orderId: String, durationMinutes: Int) = repository.startMachineCycle(machineId, orderId, durationMinutes)
 }
 
 class FinishMachineCycleUseCase(private val repository: MachineRepository) {

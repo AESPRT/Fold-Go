@@ -1,7 +1,7 @@
 package com.aesprt.foldgo.data.local.dao
 
 import androidx.room.*
-import com.aesprt.foldgo.data.local.entities.StaffEntity
+import com.aesprt.foldgo.data.local.entities.models.StaffEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao

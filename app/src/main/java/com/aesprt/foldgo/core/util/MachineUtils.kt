@@ -7,8 +7,8 @@ import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.aesprt.foldgo.domain.model.MachineStatus
-import com.aesprt.foldgo.domain.model.MachineType
+import com.aesprt.foldgo.domain.model.enums.MachineStatus
+import com.aesprt.foldgo.domain.model.enums.MachineType
 
 object MachineUtils {
     fun getStatusColor(status: MachineStatus): Color = when (status) {

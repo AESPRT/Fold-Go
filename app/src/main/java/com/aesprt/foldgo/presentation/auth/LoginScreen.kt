@@ -20,9 +20,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.presentation.components.FoldGoLogo
 import com.aesprt.foldgo.presentation.components.ModernBackground
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,13 +35,32 @@ fun LoginScreen(
     viewModel: LoginViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scrollState = rememberScrollState()
 
     LaunchedEffect(uiState.loginSuccess) {
         if (uiState.loginSuccess) {
             onLoginSuccess()
         }
     }
+
+    LoginContent(
+        uiState = uiState,
+        onShopIdChange = viewModel::onShopIdChange,
+        onPinChange = viewModel::onPinChange,
+        onLogin = viewModel::login,
+        onCreateShop = onCreateShop
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginContent(
+    uiState: LoginUiState,
+    onShopIdChange: (String) -> Unit,
+    onPinChange: (String) -> Unit,
+    onLogin: () -> Unit,
+    onCreateShop: () -> Unit
+) {
+    val scrollState = rememberScrollState()
 
     ModernBackground {
         Scaffold(
@@ -79,7 +100,7 @@ fun LoginScreen(
 
                     OutlinedTextField(
                         value = uiState.shopId,
-                        onValueChange = viewModel::onShopIdChange,
+                        onValueChange = onShopIdChange,
                         label = { Text("Shop ID", style = MaterialTheme.typography.bodyMedium) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -91,7 +112,7 @@ fun LoginScreen(
 
                     OutlinedTextField(
                         value = uiState.pin,
-                        onValueChange = viewModel::onPinChange,
+                        onValueChange = onPinChange,
                         label = { Text("Shop PIN", style = MaterialTheme.typography.bodyMedium) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -103,7 +124,7 @@ fun LoginScreen(
 
                     if (uiState.error != null) {
                         Text(
-                            text = uiState.error!!,
+                            text = uiState.error,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 8.dp),
@@ -114,7 +135,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(32.dp))
 
                     Button(
-                        onClick = viewModel::login,
+                        onClick = onLogin,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -155,5 +176,19 @@ fun LoginScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginContentPreview() {
+    FoldGoTheme {
+        LoginContent(
+            uiState = LoginUiState(shopId = "SHOP123", pin = "1234"),
+            onShopIdChange = {},
+            onPinChange = {},
+            onLogin = {},
+            onCreateShop = {}
+        )
     }
 }

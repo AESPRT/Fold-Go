@@ -1,6 +1,8 @@
 package com.aesprt.foldgo.data.local.entities
 
+import com.aesprt.foldgo.data.local.entities.models.MachineEntity
 import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.enums.*
 
 fun MachineEntity.toDomain() = Machine(
     machineId = machineId,

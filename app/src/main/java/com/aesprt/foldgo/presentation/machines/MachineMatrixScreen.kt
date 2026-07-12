@@ -14,37 +14,58 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.MachineCard
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.components.SummaryCard
 import com.aesprt.foldgo.presentation.machines.components.MachineFilterSection
-import com.aesprt.foldgo.domain.model.MachineStatus
-import com.aesprt.foldgo.domain.model.MachineType
+import com.aesprt.foldgo.domain.model.enums.MachineStatus
+import com.aesprt.foldgo.domain.model.enums.MachineType
+import com.aesprt.foldgo.presentation.components.FoldGoLogo
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MachineMatrixScreen(
     onAddNewMachine: () -> Unit,
-    onMachineClick: (String) -> Unit, // Added this parameter
+    onMachineClick: (String) -> Unit,
     viewModel: MachineViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    MachineMatrixContent(
+        uiState = uiState,
+        onAddNewMachine = onAddNewMachine,
+        onMachineClick = onMachineClick,
+        onFilterTypeChanged = viewModel::onFilterTypeChanged,
+        onFinishCycle = viewModel::finishCycle
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MachineMatrixContent(
+    uiState: MachineUiState,
+    onAddNewMachine: () -> Unit,
+    onMachineClick: (String) -> Unit,
+    onFilterTypeChanged: (MachineType?) -> Unit,
+    onFinishCycle: (String) -> Unit
+) {
     ModernBackground {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { 
-                        Text(
-                            "Machine Matrix",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        ) 
+                    title = {
+                        FoldGoLogo(
+                            iconSize = 32.dp,
+                            title = "Machines",
+                            supportingText = "Manage your washing and drying machines",
+                        )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     windowInsets = WindowInsets.statusBars
@@ -70,7 +91,7 @@ fun MachineMatrixScreen(
                 ) {
                     val washingCount = uiState.machines.count { it.status == MachineStatus.BUSY && it.type == MachineType.WASHER }
                     val dryingCount = uiState.machines.count { it.status == MachineStatus.BUSY && it.type == MachineType.DRYER }
-                    
+
                     SummaryCard(
                         title = "Washing",
                         value = washingCount.toString(),
@@ -90,7 +111,7 @@ fun MachineMatrixScreen(
                 MachineFilterSection(
                     selectedType = uiState.filteredType,
                     availableTypes = uiState.availableTypes,
-                    onTypeSelected = viewModel::onFilterTypeChanged
+                    onTypeSelected = onFilterTypeChanged
                 )
 
                 if (uiState.isLoading) {
@@ -100,8 +121,8 @@ fun MachineMatrixScreen(
                 } else if (uiState.machines.isEmpty()) {
                     FoldGoEmptyState(
                         message = "No machines found",
-                        description = if (uiState.filteredType != null) 
-                            "No ${uiState.filteredType?.name?.lowercase()}s are currently configured."
+                        description = if (uiState.filteredType != null)
+                            "No ${uiState.filteredType.name.lowercase()}s are currently configured."
                             else "You haven't added any washing or drying machines yet.",
                         icon = Icons.Rounded.LocalLaundryService
                     )
@@ -117,12 +138,32 @@ fun MachineMatrixScreen(
                             MachineCard(
                                 machine = machine,
                                 onClick = { onMachineClick(machine.machineId) },
-                                onTimerFinished = { viewModel.finishCycle(machine.machineId) }
+                                onTimerFinished = { onFinishCycle(machine.machineId) }
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MachineMatrixContentPreview() {
+    FoldGoTheme {
+        MachineMatrixContent(
+            uiState = MachineUiState(
+                machines = listOf(
+                    Machine("1", "shop1", "Washer 01", MachineType.WASHER, 8.0, MachineStatus.IDLE, 0L),
+                    Machine("2", "shop1", "Dryer 01", MachineType.DRYER, 10.0, MachineStatus.BUSY, 0L, System.currentTimeMillis() + 600000)
+                ),
+                availableTypes = listOf(MachineType.WASHER, MachineType.DRYER)
+            ),
+            onAddNewMachine = {},
+            onMachineClick = {},
+            onFilterTypeChanged = {},
+            onFinishCycle = {}
+        )
     }
 }

@@ -14,19 +14,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.domain.model.Machine
-import com.aesprt.foldgo.domain.model.MachineStatus
-import com.aesprt.foldgo.domain.model.MachineType
-import com.aesprt.foldgo.domain.model.Order
+import com.aesprt.foldgo.domain.model.enums.MachineStatus
+import com.aesprt.foldgo.domain.model.enums.MachineType
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.machines.components.MachineStatusDialog
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MachineDetailScreen(
     machineId: String,
@@ -35,6 +35,27 @@ fun MachineDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val machine = uiState.machines.find { it.machineId == machineId }
+
+    MachineDetailContent(
+        uiState = uiState,
+        machine = machine,
+        onNavigateBack = onNavigateBack,
+        onUpdateStatus = viewModel::updateStatus,
+        onStartCycle = viewModel::startCycle,
+        onFinishCycle = viewModel::finishCycle
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MachineDetailContent(
+    uiState: MachineUiState,
+    machine: Machine?,
+    onNavigateBack: () -> Unit,
+    onUpdateStatus: (String, MachineStatus) -> Unit,
+    onStartCycle: (String, Int, String?, Double?) -> Unit,
+    onFinishCycle: (String) -> Unit
+) {
     var showStatusDialog by remember { mutableStateOf(false) }
 
     ModernBackground {
@@ -101,7 +122,7 @@ fun MachineDetailScreen(
 
                     // Analytics & Info
                     Text("Performance & Stats", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    
+
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         DetailStatCard(
                             label = "Total Cycles",
@@ -121,7 +142,7 @@ fun MachineDetailScreen(
 
                     // Actions Section
                     Text("Management Actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    
+
                     Button(
                         onClick = { showStatusDialog = true },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -133,7 +154,7 @@ fun MachineDetailScreen(
                     }
 
                     OutlinedButton(
-                        onClick = { viewModel.updateStatus(machineId, MachineStatus.OUT_OF_ORDER) },
+                        onClick = { onUpdateStatus(machine.machineId, MachineStatus.OUT_OF_ORDER) },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -153,11 +174,36 @@ fun MachineDetailScreen(
             activeOrders = uiState.activeOrders,
             onDismiss = { showStatusDialog = false },
             onStatusChange = { status ->
-                viewModel.updateStatus(machineId, MachineStatus.valueOf(status))
-                showStatusDialog = false 
+                onUpdateStatus(machine.machineId, MachineStatus.valueOf(status))
+                showStatusDialog = false
             },
-            onStartCycle = { duration, orderId -> viewModel.startCycle(machineId, duration, orderId); showStatusDialog = false },
-            onFinishCycle = { viewModel.finishCycle(machineId); showStatusDialog = false }
+            onStartCycle = { duration, orderId, weight -> onStartCycle(machine.machineId, duration, orderId, weight); showStatusDialog = false },
+            onFinishCycle = { onFinishCycle(machine.machineId); showStatusDialog = false }
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MachineDetailContentPreview() {
+    FoldGoTheme {
+        MachineDetailContent(
+            uiState = MachineUiState(),
+            machine = Machine(
+                machineId = "1",
+                shopId = "shop1",
+                name = "Washer 01",
+                type = MachineType.WASHER,
+                capacityKg = 8.0,
+                status = MachineStatus.BUSY,
+                lastMaintenanceDate = 0L,
+                endTime = System.currentTimeMillis() + 600000,
+                cyclesCount = 42
+            ),
+            onNavigateBack = {},
+            onUpdateStatus = { _, _ -> },
+            onStartCycle = { _, _, _, _ -> },
+            onFinishCycle = {}
         )
     }
 }

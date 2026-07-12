@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.sp
 import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.core.util.TimeUtils
 import com.aesprt.foldgo.domain.model.Machine
-import com.aesprt.foldgo.domain.model.MachineStatus
-import com.aesprt.foldgo.domain.model.MachineType
+import com.aesprt.foldgo.domain.model.enums.MachineStatus
+import com.aesprt.foldgo.domain.model.enums.MachineType
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds

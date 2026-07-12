@@ -1,10 +1,31 @@
 package com.aesprt.foldgo.data.local.entities
 
-import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.ServiceItem
-import com.aesprt.foldgo.domain.model.Shop
+import com.aesprt.foldgo.data.local.entities.models.*
+import com.aesprt.foldgo.domain.model.*
+import com.aesprt.foldgo.domain.model.enums.*
+import com.aesprt.foldgo.domain.model.enums.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+
+fun OrderBatchEntity.toDomain() = OrderBatch(
+    batchId = batchId,
+    orderId = orderId,
+    machineId = machineId,
+    weightKg = weightKg,
+    status = status,
+    startTime = startTime,
+    endTime = endTime
+)
+
+fun OrderBatch.toEntity() = OrderBatchEntity(
+    batchId = batchId,
+    orderId = orderId,
+    machineId = machineId,
+    weightKg = weightKg,
+    status = status,
+    startTime = startTime,
+    endTime = endTime
+)
 
 fun ShopEntity.toDomain(): Shop {
     val settingsMap = try {
@@ -16,6 +37,7 @@ fun ShopEntity.toDomain(): Shop {
         shopId = shopId,
         name = name,
         address = address,
+        mobileNumber = mobileNumber,
         ownerId = ownerId,
         pin = pin,
         settings = settingsMap,
@@ -28,6 +50,7 @@ fun Shop.toEntity(): ShopEntity {
         shopId = shopId,
         name = name,
         address = address,
+        mobileNumber = mobileNumber,
         ownerId = ownerId,
         pin = pin,
         settings = Json.encodeToString(settings),
@@ -35,8 +58,8 @@ fun Shop.toEntity(): ShopEntity {
     )
 }
 
-fun StaffEntity.toDomain(): com.aesprt.foldgo.domain.model.Staff {
-    return com.aesprt.foldgo.domain.model.Staff(
+fun StaffEntity.toDomain(): Staff {
+    return Staff(
         staffId = staffId,
         shopId = shopId,
         name = name,
@@ -46,7 +69,7 @@ fun StaffEntity.toDomain(): com.aesprt.foldgo.domain.model.Staff {
     )
 }
 
-fun com.aesprt.foldgo.domain.model.Staff.toEntity(): StaffEntity {
+fun Staff.toEntity(): StaffEntity {
     return StaffEntity(
         staffId = staffId,
         shopId = shopId,
@@ -57,8 +80,8 @@ fun com.aesprt.foldgo.domain.model.Staff.toEntity(): StaffEntity {
     )
 }
 
-fun MachineCategoryEntity.toDomain(): com.aesprt.foldgo.domain.model.MachineCategory {
-    return com.aesprt.foldgo.domain.model.MachineCategory(
+fun MachineCategoryEntity.toDomain(): MachineCategory {
+    return MachineCategory(
         categoryId = categoryId,
         name = name,
         type = type,
@@ -67,7 +90,7 @@ fun MachineCategoryEntity.toDomain(): com.aesprt.foldgo.domain.model.MachineCate
     )
 }
 
-fun com.aesprt.foldgo.domain.model.MachineCategory.toEntity(): MachineCategoryEntity {
+fun MachineCategory.toEntity(): MachineCategoryEntity {
     return MachineCategoryEntity(
         categoryId = categoryId,
         name = name,
@@ -77,8 +100,8 @@ fun com.aesprt.foldgo.domain.model.MachineCategory.toEntity(): MachineCategoryEn
     )
 }
 
-fun ServiceEntity.toDomain(): com.aesprt.foldgo.domain.model.Service {
-    return com.aesprt.foldgo.domain.model.Service(
+fun ServiceEntity.toDomain(): Service {
+    return Service(
         serviceId = serviceId,
         shopId = shopId,
         name = name,
@@ -89,7 +112,7 @@ fun ServiceEntity.toDomain(): com.aesprt.foldgo.domain.model.Service {
     )
 }
 
-fun com.aesprt.foldgo.domain.model.Service.toEntity(): ServiceEntity {
+fun Service.toEntity(): ServiceEntity {
     return ServiceEntity(
         serviceId = serviceId,
         shopId = shopId,
@@ -119,6 +142,7 @@ fun OrderEntity.toDomain(): Order {
         customerId = customerId,
         customerName = customerName,
         customerPhone = customerPhone,
+        customerAddress = customerAddress,
         orderNumber = orderNumber,
         items = items,
         totalAmount = totalAmount,
@@ -143,6 +167,7 @@ fun Order.toEntity(isSynced: Boolean = false): OrderEntity {
         customerId = customerId,
         customerName = customerName,
         customerPhone = customerPhone,
+        customerAddress = customerAddress,
         orderNumber = orderNumber,
         itemsJson = Json.encodeToString(items),
         totalAmount = totalAmount,

@@ -8,8 +8,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.domain.model.Service
+import com.aesprt.foldgo.domain.model.enums.ServiceType
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,4 +68,16 @@ fun QuantityPromptDialog(
             }
         }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun QuantityPromptDialogPreview() {
+    FoldGoTheme {
+        QuantityPromptDialog(
+            service = Service("1", "shop1", "Regular Wash", 1.0, "KG", 65.0, ServiceType.WASH),
+            onDismiss = {},
+            onConfirm = {}
+        )
+    }
 }

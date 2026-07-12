@@ -24,7 +24,7 @@ import com.aesprt.foldgo.presentation.components.OrderCard
 import com.aesprt.foldgo.presentation.components.SummaryCard
 import androidx.compose.ui.tooling.preview.Preview
 import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.enums.OrderStatus
 import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
@@ -53,7 +53,7 @@ fun DashboardContent(
     uiState: DashboardUiState,
     onOrderClick: (String) -> Unit,
     onNewOrderClick: () -> Unit,
-    onAutoFinish: (String) -> Unit
+    onAutoFinish: (String, String) -> Unit
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -61,31 +61,6 @@ fun DashboardContent(
             TopAppBar(
                 title = { 
                     FoldGoLogo(iconSize = 32.dp)
-                },
-                actions = {
-                    IconButton(
-                        onClick = { /* TODO */ },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                Badge(
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                    contentColor = MaterialTheme.colorScheme.onError,
-                                    modifier = Modifier.offset(x = (-4).dp, y = 4.dp)
-                                ) {
-                                    Text("1", style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.AccountCircle,
-                                contentDescription = "Profile",
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
@@ -174,7 +149,7 @@ fun DashboardContent(
                             order = orderWithMachine.order,
                             machine = orderWithMachine.machine,
                             onClick = { onOrderClick(orderWithMachine.order.orderId) },
-                            onTimerFinished = { orderWithMachine.machine?.let { onAutoFinish(it.machineId) } }
+                            onTimerFinished = { orderWithMachine.machine?.let { onAutoFinish(it.machineId, orderWithMachine.order.orderId) } }
                         )
                     }
                 }
@@ -191,7 +166,7 @@ fun DashboardContentLoadingPreview() {
             uiState = DashboardUiState(isLoading = true),
             onOrderClick = {},
             onNewOrderClick = {},
-            onAutoFinish = {}
+            onAutoFinish = {_, _ -> }
         )
     }
 }
@@ -204,7 +179,7 @@ fun DashboardContentEmptyPreview() {
             uiState = DashboardUiState(orders = emptyList()),
             onOrderClick = {},
             onNewOrderClick = {},
-            onAutoFinish = {}
+            onAutoFinish = {_, _ -> }
         )
     }
 }
@@ -262,7 +237,7 @@ fun DashboardContentPreview() {
             ),
             onOrderClick = {},
             onNewOrderClick = {},
-            onAutoFinish = {}
+            onAutoFinish = {_, _ -> }
         )
     }
 }
