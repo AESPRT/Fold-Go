@@ -2,9 +2,10 @@ package com.aesprt.foldgo.presentation.order
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,7 @@ import com.aesprt.foldgo.core.util.DateFormatterUtils.formatDate
 import com.aesprt.foldgo.core.util.KgFormatterUtils
 import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.core.util.OrderStatusUtils
+import com.aesprt.foldgo.core.util.TimeUtils
 import com.aesprt.foldgo.domain.model.enums.DeliveryMethod
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.enums.MachineStatus
@@ -143,6 +145,8 @@ fun OrderDetailContent(
     onDelivered: () -> Unit,
     onFinishCycle: (String) -> Unit
 ) {
+    var selectedBatchId by remember { mutableStateOf<String?>(null) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -154,16 +158,35 @@ fun OrderDetailContent(
 
         if (batches.isNotEmpty()) {
             item {
-                Text(
-                    "Order Batches",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Order Batches",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (selectedBatchId != null) {
+                        TextButton(onClick = { selectedBatchId = null }) {
+                            Text("Show All Progress", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
             }
-            items(batches) { batch ->
+            itemsIndexed(batches) { index, batch ->
                 val batchMachine = allMachines.find { it.machineId == batch.machineId }
-                BatchCard(batch, batchMachine)
+                BatchCard(
+                    batch = batch,
+                    machine = batchMachine,
+                    index = index,
+                    total = batches.size,
+                    isSelected = selectedBatchId == batch.batchId,
+                    onClick = {
+                        selectedBatchId = if (selectedBatchId == batch.batchId) null else batch.batchId
+                    }
+                )
             }
         }
 
@@ -174,7 +197,20 @@ fun OrderDetailContent(
             order.status == OrderStatus.FOLDING
         ) {
             item {
-                ActiveCycleCard(order, machine, allMachines, batches, onOrderStatusClick, onFinishCycle)
+                val selectedBatch = batches.find { it.batchId == selectedBatchId }
+                val activeMachine = if (selectedBatch != null) {
+                    allMachines.find { it.machineId == selectedBatch.machineId }
+                } else machine
+
+                ActiveCycleCard(
+                    order = order,
+                    machine = activeMachine,
+                    allMachines = allMachines,
+                    batches = batches,
+                    selectedBatch = selectedBatch,
+                    onOrderStatusClick = onOrderStatusClick,
+                    onFinishCycle = onFinishCycle
+                )
             }
         }
 
@@ -217,11 +253,58 @@ fun OrderDetailContent(
 }
 
 @Composable
-fun BatchCard(batch: OrderBatch, machine: Machine?) {
+fun BatchCard(
+    batch: OrderBatch,
+    machine: Machine?,
+    index: Int,
+    total: Int,
+    isSelected: Boolean = false,
+    onClick: () -> Unit = {}
+) {
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    val isProcessing = batch.status == OrderStatus.WASHING ||
+            batch.status == OrderStatus.DRYING ||
+            batch.status == OrderStatus.WASHING_AND_DRYING ||
+            batch.status == OrderStatus.IRONING
+
+    LaunchedEffect(isProcessing, machine?.endTime) {
+        if (isProcessing && machine?.endTime != null) {
+            while (currentTime < machine.endTime) {
+                delay(1000.milliseconds)
+                currentTime = System.currentTimeMillis()
+            }
+        }
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "batchRotation")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    val batchIcon = when (batch.serviceType) {
+        ServiceType.WASH -> Icons.Rounded.LocalLaundryService
+        ServiceType.DRY -> Icons.Rounded.Air
+        ServiceType.WASH_DRY -> Icons.Rounded.AllInclusive
+        ServiceType.IRON -> Icons.Rounded.Iron
+        ServiceType.OTHER -> Icons.Rounded.Category
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) 
+                            else MaterialTheme.colorScheme.surface
+        ),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -234,9 +317,11 @@ fun BatchCard(batch: OrderBatch, machine: Machine?) {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = if (batch.status == OrderStatus.WASHING) Icons.Rounded.LocalLaundryService else Icons.Rounded.Air,
+                        imageVector = batchIcon,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .then(if (isProcessing) Modifier.rotate(rotation) else Modifier),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -244,15 +329,30 @@ fun BatchCard(batch: OrderBatch, machine: Machine?) {
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Batch: ${batch.weightKg}kg",
+                    text = "Batch ${index + 1} of $total: ${batch.weightKg}kg",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = machine?.name ?: "No Machine",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = machine?.name ?: "No Machine",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (isProcessing && machine?.endTime != null) {
+                        val remaining = machine.endTime - currentTime
+                        if (remaining > 0) {
+                            val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining)
+                            val seconds = TimeUnit.MILLISECONDS.toSeconds(remaining) % 60
+                            Text(
+                                text = " • ${TimeUtils.formatTime(minutes, seconds)} left",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
             StatusChip(status = batch.status)
         }
@@ -308,20 +408,27 @@ fun ActiveCycleCard(
     machine: Machine?,
     allMachines: List<Machine>,
     batches: List<OrderBatch>,
+    selectedBatch: OrderBatch? = null,
     onOrderStatusClick: (OrderStatus) -> Unit,
     onFinishCycle: (String) -> Unit
 ) {
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    val totalWeight = order.items.sumOf { it.quantity }.coerceAtLeast(0.1)
+    // If a batch is selected, we focus on its weight. Otherwise, use total order weight.
+    val totalWeight = selectedBatch?.weightKg ?: order.items.sumOf { it.quantity }.coerceAtLeast(0.1)
+
+    // Current status to display (Batch status or Order status)
+    val currentStatus = selectedBatch?.status ?: order.status
 
     val isCycleComplete = (machine?.endTime != null && currentTime >= machine.endTime) ||
-            order.status == OrderStatus.WASHED_AND_DRIED ||
-            order.status == OrderStatus.WASHED || order.status == OrderStatus.DRIED ||
-            order.status == OrderStatus.IRONED
+            currentStatus == OrderStatus.WASHED_AND_DRIED ||
+            currentStatus == OrderStatus.WASHED || currentStatus == OrderStatus.DRIED ||
+            currentStatus == OrderStatus.IRONED
 
-    // Weight finished for the CURRENT MAJOR PHASE (WASHED, DRIED, IRONED)
-    val weightFinished = if (batches.isEmpty()) {
+    // Weight finished calculation
+    val weightFinished = if (selectedBatch != null) {
+        if (isCycleComplete) selectedBatch.weightKg else 0.0
+    } else if (batches.isEmpty()) {
         when (order.status) {
             OrderStatus.WASHED_AND_DRIED,
             OrderStatus.WASHED,
@@ -374,8 +481,10 @@ fun ActiveCycleCard(
         }.sumOf { it.weightKg }
     }
 
-    // Weight currently in machines for the CURRENT PHASE
-    val weightInAction = if (batches.isEmpty()) {
+    // Weight currently in action
+    val weightInAction = if (selectedBatch != null) {
+        if (machine != null && !isCycleComplete) selectedBatch.weightKg else 0.0
+    } else if (batches.isEmpty()) {
         if (order.machineId != null && !isCycleComplete) totalWeight else 0.0
     } else {
         batches.filter {
@@ -389,21 +498,40 @@ fun ActiveCycleCard(
         }.sumOf { it.weightKg }
     }
 
-    val isEverythingDone = weightFinished >= totalWeight
+    val isEverythingDone = if (selectedBatch != null) isCycleComplete else weightFinished >= totalWeight
 
-    val hasDryItems =
+    val hasDryItems = if (selectedBatch != null) {
+        selectedBatch.serviceType == ServiceType.WASH_DRY || selectedBatch.serviceType == ServiceType.DRY
+    } else {
         order.items.any { it.type == ServiceType.DRY || it.type == ServiceType.WASH_DRY }
+    }
+
     val ironMachines = allMachines.filter { it.type == MachineType.IRON }
     val isIronAvailable = ironMachines.isNotEmpty()
 
+    // Determine the relevant machine end time (specific batch or max of all batches)
+    val relevantEndTime = if (selectedBatch != null) {
+        machine?.endTime
+    } else {
+        // In summary mode, find the latest end time among all active batches for this order
+        val activeBatchMachineIds = batches.filter { 
+            it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING || 
+            it.status == OrderStatus.WASHING_AND_DRYING || it.status == OrderStatus.IRONING 
+        }.map { it.machineId }
+        
+        allMachines.filter { it.machineId in activeBatchMachineIds }
+            .mapNotNull { it.endTime }
+            .maxOrNull()
+    }
+
     val statusColor =
-        if (isEverythingDone || order.status == OrderStatus.FOLDING) Color(0xFF4CAF50) else OrderStatusUtils.getContainerColor(
-            order.status
+        if (isEverythingDone || currentStatus == OrderStatus.FOLDING) Color(0xFF4CAF50) else OrderStatusUtils.getContainerColor(
+            currentStatus
         )
 
-    LaunchedEffect(machine?.endTime, order.status) {
-        if (machine?.endTime != null && (order.status == OrderStatus.WASHING || order.status == OrderStatus.DRYING || order.status == OrderStatus.WASHING_AND_DRYING)) {
-            while (currentTime < machine.endTime) {
+    LaunchedEffect(relevantEndTime, currentStatus) {
+        if (relevantEndTime != null && (currentStatus == OrderStatus.WASHING || currentStatus == OrderStatus.DRYING || currentStatus == OrderStatus.WASHING_AND_DRYING)) {
+            while (currentTime < relevantEndTime) {
                 delay(1000.milliseconds)
                 currentTime = System.currentTimeMillis()
             }
@@ -433,6 +561,22 @@ fun ActiveCycleCard(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (selectedBatch != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text(
+                        text = "Viewing Selected Batch",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             Box(contentAlignment = Alignment.Center) {
                 Surface(
                     modifier = Modifier.size(120.dp),
@@ -441,12 +585,20 @@ fun ActiveCycleCard(
                 ) {}
 
                 Icon(
-                    imageVector = OrderStatusUtils.getStatusIcon(order.status),
+                    imageVector = if (selectedBatch != null) {
+                        when (selectedBatch.serviceType) {
+                            ServiceType.WASH -> Icons.Rounded.LocalLaundryService
+                            ServiceType.DRY -> Icons.Rounded.Air
+                            ServiceType.WASH_DRY -> Icons.Rounded.AllInclusive
+                            ServiceType.IRON -> Icons.Rounded.Iron
+                            else -> OrderStatusUtils.getStatusIcon(currentStatus)
+                        }
+                    } else OrderStatusUtils.getStatusIcon(currentStatus),
                     contentDescription = null,
                     modifier = Modifier
                         .size(64.dp)
                         .then(
-                            if (!isEverythingDone && order.status != OrderStatus.FOLDING) Modifier.rotate(
+                            if (!isEverythingDone && currentStatus != OrderStatus.FOLDING) Modifier.rotate(
                                 rotation
                             ) else Modifier
                         ),
@@ -469,37 +621,37 @@ fun ActiveCycleCard(
 
             Text(
                 text = when {
-                    order.status == OrderStatus.FOLDING -> "Folding in Progress"
-                    order.status == OrderStatus.IRONING -> "Ironing in Progress"
+                    currentStatus == OrderStatus.FOLDING -> "Folding in Progress"
+                    currentStatus == OrderStatus.IRONING -> "Ironing in Progress"
                     isEverythingDone && (
-                            order.status == OrderStatus.WASHING ||
-                                    order.status == OrderStatus.WASHED ||
-                                    order.status == OrderStatus.WASHING_AND_DRYING ||
-                                    order.status == OrderStatus.WASHED_AND_DRIED
+                            currentStatus == OrderStatus.WASHING ||
+                                    currentStatus == OrderStatus.WASHED ||
+                                    currentStatus == OrderStatus.WASHING_AND_DRYING ||
+                                    currentStatus == OrderStatus.WASHED_AND_DRIED
                             ) -> {
                         if (hasDryItems && machine?.type != MachineType.WASHER_DRYER) "Ready to Dry" else "Ready to Fold"
                     }
 
-                    isEverythingDone && (order.status == OrderStatus.DRYING || order.status == OrderStatus.DRIED) -> "Ready to Fold or Iron"
+                    isEverythingDone && (currentStatus == OrderStatus.DRYING || currentStatus == OrderStatus.DRIED) -> "Ready to Fold or Iron"
                     !isEverythingDone && isCycleComplete -> "Cycle Finished • More Pending"
-                    isEverythingDone && isCycleComplete -> "Cycle Finished • No More Pending"
-                    order.status == OrderStatus.WASHING -> "Currently Washing (${
+                    isEverythingDone && isCycleComplete -> "Cycle Finished"
+                    currentStatus == OrderStatus.WASHING -> "Currently Washing (${
                         KgFormatterUtils.formatDouble(
                             weightInAction,
                             weightFinished
                         )
                     }/${totalWeight}kg)"
 
-                    order.status == OrderStatus.WASHING_AND_DRYING -> "Currently Washing and Drying (${
+                    currentStatus == OrderStatus.WASHING_AND_DRYING -> "Currently Washing and Drying (${
                         KgFormatterUtils.formatDouble(
                             weightInAction,
                             weightFinished
                         )
                     }/${totalWeight}kg)"
 
-                    order.status == OrderStatus.DRIED
-                            || order.status == OrderStatus.WASHED_AND_DRIED
-                            || order.status == OrderStatus.WASHED -> "Ready to Fold"
+                    currentStatus == OrderStatus.DRIED
+                            || currentStatus == OrderStatus.WASHED_AND_DRIED
+                            || currentStatus == OrderStatus.WASHED -> "Ready to Fold"
 
                     else -> "Currently Drying (${
                         KgFormatterUtils.formatDouble(
@@ -510,12 +662,12 @@ fun ActiveCycleCard(
                 },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = if (isEverythingDone || order.status == OrderStatus.FOLDING || order.status == OrderStatus.IRONING) MintGreen else MaterialTheme.colorScheme.onSurface,
+                color = if (isEverythingDone || currentStatus == OrderStatus.FOLDING || currentStatus == OrderStatus.IRONING) MintGreen else MaterialTheme.colorScheme.onSurface,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
-            if (isEverythingDone && (order.status == OrderStatus.WASHING
-                        || order.status == OrderStatus.WASHED)
+            if (isEverythingDone && (currentStatus == OrderStatus.WASHING
+                        || currentStatus == OrderStatus.WASHED)
             ) {
                 if (hasDryItems && machine?.type != MachineType.WASHER_DRYER) {
                     Text(
@@ -537,9 +689,9 @@ fun ActiveCycleCard(
                     }
                 }
             } else if (isEverythingDone && (
-                        order.status == OrderStatus.DRYING
-                                || order.status == OrderStatus.DRIED
-                                || order.status == OrderStatus.WASHED_AND_DRIED
+                        currentStatus == OrderStatus.DRYING
+                                || currentStatus == OrderStatus.DRIED
+                                || currentStatus == OrderStatus.WASHED_AND_DRIED
                         )
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -607,28 +759,27 @@ fun ActiveCycleCard(
                 }
             } else if (!isEverythingDone && isCycleComplete) {
                 Text(
-                    text = "Weight processed: ${
-                        KgFormatterUtils.formatDouble(
-                            weightFinished
-                        )
-                    }kg of ${totalWeight}kg",
+                    text = if (selectedBatch != null) "Batch processing complete" 
+                          else "Weight processed: ${KgFormatterUtils.formatDouble(weightFinished)}kg of ${totalWeight}kg",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-                Text(
-                    text = "Please assign the remaining ${
-                        KgFormatterUtils.formatDouble(
-                            totalWeight - weightFinished
-                        )
-                    }kg in the Machine Matrix",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            } else if (order.status == OrderStatus.IRONED) {
+                if (selectedBatch == null) {
+                    Text(
+                        text = "Please assign the remaining ${
+                            KgFormatterUtils.formatDouble(
+                                totalWeight - weightFinished
+                            )
+                        }kg in the Machine Matrix",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 4.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            } else if (currentStatus == OrderStatus.IRONED) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "Ready to be folded",
@@ -647,29 +798,39 @@ fun ActiveCycleCard(
                         Text("Start Folding Timer", style = MaterialTheme.typography.labelLarge)
                     }
                 }
-            } else if (order.status == OrderStatus.FOLDING || order.status == OrderStatus.IRONING) {
+            } else if (currentStatus == OrderStatus.FOLDING || currentStatus == OrderStatus.IRONING) {
                 Text(
-                    text = if (order.status == OrderStatus.FOLDING) "Tracking folding duration..." else "Tracking ironing duration...",
+                    text = if (currentStatus == OrderStatus.FOLDING) "Tracking folding duration..." else "Tracking ironing duration...",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-            } else if (machine != null) {
-                Text(
-                    text = "assigned to ${machine.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            } else if (machine != null || (selectedBatch == null && relevantEndTime != null)) {
+                if (selectedBatch == null && relevantEndTime != null) {
+                    Text(
+                        text = "Calculating completion for all active batches...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (machine != null) {
+                    Text(
+                        text = "assigned to ${machine.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-                if (!isCycleComplete && machine.endTime != null) {
+                if (!isCycleComplete && relevantEndTime != null) {
                     RemainingTimer(
-                        endTime = machine.endTime,
+                        endTime = relevantEndTime,
                         color = statusColor,
                         currentTime = currentTime,
-                        machineId = machine.machineId,
+                        machineId = machine?.machineId ?: "",
                         onFinishCycle = onFinishCycle
                     )
                 }

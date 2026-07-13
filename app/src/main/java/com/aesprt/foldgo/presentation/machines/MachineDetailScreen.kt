@@ -21,6 +21,7 @@ import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.enums.MachineStatus
 import com.aesprt.foldgo.domain.model.enums.MachineType
+import com.aesprt.foldgo.domain.model.enums.ServiceType
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.machines.components.MachineStatusDialog
@@ -53,7 +54,7 @@ fun MachineDetailContent(
     machine: Machine?,
     onNavigateBack: () -> Unit,
     onUpdateStatus: (String, MachineStatus) -> Unit,
-    onStartCycle: (String, Int, String?, Double?) -> Unit,
+    onStartCycle: (String, Int, String?, Double?, ServiceType?) -> Unit,
     onFinishCycle: (String) -> Unit
 ) {
     var showStatusDialog by remember { mutableStateOf(false) }
@@ -177,7 +178,7 @@ fun MachineDetailContent(
                 onUpdateStatus(machine.machineId, MachineStatus.valueOf(status))
                 showStatusDialog = false
             },
-            onStartCycle = { duration, orderId, weight -> onStartCycle(machine.machineId, duration, orderId, weight); showStatusDialog = false },
+            onStartCycle = { duration, orderId, weight, serviceType -> onStartCycle(machine.machineId, duration, orderId, weight, serviceType); showStatusDialog = false },
             onFinishCycle = { onFinishCycle(machine.machineId); showStatusDialog = false }
         )
     }
@@ -202,7 +203,7 @@ fun MachineDetailContentPreview() {
             ),
             onNavigateBack = {},
             onUpdateStatus = { _, _ -> },
-            onStartCycle = { _, _, _, _ -> },
+            onStartCycle = { _, _, _, _, _ -> },
             onFinishCycle = {}
         )
     }

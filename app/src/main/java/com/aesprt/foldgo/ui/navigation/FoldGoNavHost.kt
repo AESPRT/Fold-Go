@@ -1,5 +1,6 @@
 package com.aesprt.foldgo.ui.navigation
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -10,6 +11,7 @@ import com.aesprt.foldgo.presentation.auth.StaffSelectionScreen
 import com.aesprt.foldgo.presentation.dashboard.DashboardScreen
 import com.aesprt.foldgo.presentation.history.HistoryScreen
 import com.aesprt.foldgo.presentation.machines.AddMachineScreen
+import com.aesprt.foldgo.presentation.machines.EquipmentSetupScreen
 import com.aesprt.foldgo.presentation.machines.MachineDetailScreen
 import com.aesprt.foldgo.presentation.machines.MachineMatrixScreen
 import com.aesprt.foldgo.presentation.onboarding.OnboardingScreen
@@ -71,6 +73,9 @@ object ShopInfoRoute
 object ServicesRoute
 
 @Serializable
+object EquipmentSetupRoute
+
+@Serializable
 object SMSRoute
 
 @Serializable
@@ -82,7 +87,8 @@ object AppearanceRoute
 @Composable
 fun FoldGoNavHost(
     navController: NavHostController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues()
 ) {
     NavHost(
         navController = navController,
@@ -169,7 +175,8 @@ fun FoldGoNavHost(
                 },
                 onNewOrderClick = {
                     navController.navigate(NewOrderRoute)
-                }
+                },
+                contentPadding = contentPadding
             )
         }
 
@@ -187,12 +194,10 @@ fun FoldGoNavHost(
 
         composable<MachineMatrixRoute> {
             MachineMatrixScreen(
-                onAddNewMachine = {
-                    navController.navigate(NewMachineRoute)
-                },
                 onMachineClick = { machineId ->
                     navController.navigate(MachineDetailRoute(machineId))
-                }
+                },
+                contentPadding = contentPadding
             )
         }
 
@@ -208,7 +213,8 @@ fun FoldGoNavHost(
             HistoryScreen(
                 onOrderClick = { orderId ->
                     navController.navigate(OrderDetailRoute(orderId))
-                }
+                },
+                contentPadding = contentPadding
             )
         }
 
@@ -225,6 +231,9 @@ fun FoldGoNavHost(
                 onNavigateToServices = {
                     navController.navigate(ServicesRoute)
                 },
+                onNavigateToEquipmentSetup = {
+                    navController.navigate(EquipmentSetupRoute)
+                },
                 onNavigateToSMS = {
                     navController.navigate(SMSRoute)
                 },
@@ -233,7 +242,8 @@ fun FoldGoNavHost(
                 },
                 onNavigateToAppearance = {
                     navController.navigate(AppearanceRoute)
-                }
+                },
+                contentPadding = contentPadding
             )
         }
 
@@ -246,6 +256,13 @@ fun FoldGoNavHost(
         composable<ServicesRoute> {
             ServicesScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<EquipmentSetupRoute> {
+            EquipmentSetupScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAddMachine = { navController.navigate(NewMachineRoute) }
             )
         }
 

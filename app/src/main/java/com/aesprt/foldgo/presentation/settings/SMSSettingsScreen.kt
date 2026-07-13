@@ -14,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.presentation.components.ModernBackground
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +28,63 @@ fun SMSSettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    SMSSettingsContent(
+        uiState = uiState,
+        onToggleSms = viewModel::toggleSms,
+        onBuyCredits = viewModel::buyCredits,
+        onNavigateBack = onNavigateBack
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationSettingsScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: PreferencesViewModel = koinViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    PreferenceBaseScreen(
+        title = "Push Notifications",
+        onNavigateBack = onNavigateBack
+    ) {
+        PreferenceToggle(
+            title = "Enable Notifications",
+            subtitle = "Receive alerts for machine status and system updates.",
+            checked = uiState.isNotificationsEnabled,
+            onCheckedChange = viewModel::toggleNotifications
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppearanceScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: PreferencesViewModel = koinViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    PreferenceBaseScreen(
+        title = "Appearance",
+        onNavigateBack = onNavigateBack
+    ) {
+        PreferenceToggle(
+            title = "Dark Mode",
+            subtitle = "Use a darker color palette for the app interface.",
+            checked = uiState.isDarkModeEnabled,
+            onCheckedChange = viewModel::toggleDarkMode
+        )
+    }
+}
+
+@Composable
+private fun SMSSettingsContent(
+    uiState: PreferencesUiState,
+    onToggleSms: (Boolean) -> Unit,
+    onBuyCredits: () -> Unit,
+    onNavigateBack: () -> Unit
+) {
     PreferenceBaseScreen(
         title = "SMS Notifications",
         onNavigateBack = onNavigateBack
@@ -72,7 +131,7 @@ fun SMSSettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { viewModel.buyCredits() },
+                    onClick = onBuyCredits,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -109,7 +168,7 @@ fun SMSSettingsScreen(
                     title = "Automated Alerts",
                     subtitle = "Notify customers instantly when their laundry is ready for pickup.",
                     checked = uiState.isSmsEnabled,
-                    onCheckedChange = viewModel::toggleSms,
+                    onCheckedChange = onToggleSms,
                     enabled = uiState.smsCredits > 0,
                     icon = Icons.Rounded.Sms
                 )
@@ -157,54 +216,12 @@ fun SMSSettingsScreen(
             }
         } else if (uiState.error != null) {
             Text(
-                text = uiState.error!!,
+                text = uiState.error,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NotificationSettingsScreen(
-    onNavigateBack: () -> Unit,
-    viewModel: PreferencesViewModel = koinViewModel()
-) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    PreferenceBaseScreen(
-        title = "Push Notifications",
-        onNavigateBack = onNavigateBack
-    ) {
-        PreferenceToggle(
-            title = "Enable Notifications",
-            subtitle = "Receive alerts for machine status and system updates.",
-            checked = uiState.isNotificationsEnabled,
-            onCheckedChange = viewModel::toggleNotifications
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AppearanceScreen(
-    onNavigateBack: () -> Unit,
-    viewModel: PreferencesViewModel = koinViewModel()
-) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    PreferenceBaseScreen(
-        title = "Appearance",
-        onNavigateBack = onNavigateBack
-    ) {
-        PreferenceToggle(
-            title = "Dark Mode",
-            subtitle = "Use a darker color palette for the app interface.",
-            checked = uiState.isDarkModeEnabled,
-            onCheckedChange = viewModel::toggleDarkMode
-        )
     }
 }
 
@@ -299,5 +316,18 @@ private fun PreferenceToggle(
                 enabled = enabled
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SMSSettingsScreenPreview() {
+    FoldGoTheme {
+        SMSSettingsContent(
+            uiState = PreferencesUiState(smsCredits = 50, isSmsEnabled = true),
+            onToggleSms = {},
+            onBuyCredits = {},
+            onNavigateBack = {}
+        )
     }
 }

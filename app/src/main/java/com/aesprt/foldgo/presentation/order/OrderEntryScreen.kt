@@ -6,17 +6,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.TextFieldValue
+import com.aesprt.foldgo.R
 import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.domain.model.Service
 import com.aesprt.foldgo.domain.model.ServiceItem
@@ -47,7 +48,6 @@ fun OrderEntryScreen(
         onRemoveItem = viewModel::removeItem,
         onSaveOrder = viewModel::saveOrder,
         onClearError = viewModel::clearError,
-        onShowAddDialog = { showAddDialog = true },
         onPromptService = { serviceToPrompt = it }
     )
 
@@ -93,7 +93,6 @@ fun OrderEntryContent(
     onRemoveItem: (ServiceItem) -> Unit,
     onSaveOrder: () -> Unit,
     onClearError: () -> Unit,
-    onShowAddDialog: () -> Unit,
     onPromptService: (Service) -> Unit
 ) {
     LaunchedEffect(uiState.isSuccess) {
@@ -166,7 +165,7 @@ fun OrderEntryContent(
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
                         ),
-                        placeholder = { Text("09xxxxxxxxx", style = MaterialTheme.typography.bodySmall) }
+                        placeholder = { Text(stringResource(R.string.phone_number_sample), style = MaterialTheme.typography.bodySmall) }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -223,19 +222,6 @@ fun OrderEntryContent(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-
-                        TextButton(
-                            onClick = onShowAddDialog,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Service", style = MaterialTheme.typography.labelLarge)
-                        }
                     }
 
                     // Dynamic Quick Add Presets
@@ -390,7 +376,6 @@ fun OrderEntryContentPreview() {
             onRemoveItem = {},
             onSaveOrder = {},
             onClearError = {},
-            onShowAddDialog = {},
             onPromptService = {}
         )
     }

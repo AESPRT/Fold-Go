@@ -61,6 +61,7 @@ fun MachineCard(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ),
         border = CardDefaults.outlinedCardBorder().copy(
             brush = SolidColor(statusColor.copy(alpha = 0.2f))
@@ -114,7 +115,7 @@ fun MachineCard(
                 Text(
                     text = "${machine.type.name.lowercase().replaceFirstChar { it.uppercase() }} • ${machine.capacityKg}kg",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
                 )
 
                 if (machine.status == MachineStatus.BUSY && machine.endTime != null) {

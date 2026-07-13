@@ -34,9 +34,11 @@ fun SettingsScreen(
     onLogout: () -> Unit,
     onNavigateToShopInfo: (() -> Unit)? = null,
     onNavigateToServices: (() -> Unit)? = null,
+    onNavigateToEquipmentSetup: (() -> Unit)? = null,
     onNavigateToSMS: (() -> Unit)? = null,
     onNavigateToNotifications: (() -> Unit)? = null,
     onNavigateToAppearance: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(),
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -49,9 +51,11 @@ fun SettingsScreen(
         },
         onNavigateToShopInfo = onNavigateToShopInfo,
         onNavigateToServices = onNavigateToServices,
+        onNavigateToEquipmentSetup = onNavigateToEquipmentSetup,
         onNavigateToSMS = onNavigateToSMS,
         onNavigateToNotifications = onNavigateToNotifications,
-        onNavigateToAppearance = onNavigateToAppearance
+        onNavigateToAppearance = onNavigateToAppearance,
+        contentPadding = contentPadding
     )
 }
 
@@ -63,9 +67,11 @@ private fun SettingsContent(
     onEndShift: (() -> Unit) -> Unit,
     onNavigateToShopInfo: (() -> Unit)? = null,
     onNavigateToServices: (() -> Unit)? = null,
+    onNavigateToEquipmentSetup: (() -> Unit)? = null,
     onNavigateToSMS: (() -> Unit)? = null,
     onNavigateToNotifications: (() -> Unit)? = null,
-    onNavigateToAppearance: (() -> Unit)? = null
+    onNavigateToAppearance: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -98,6 +104,10 @@ private fun SettingsContent(
                         actionIconContentColor = Color.Unspecified
                     )
                 )
+            },
+            bottomBar = {
+                // Reserve space for the floating bottom bar
+                Spacer(modifier = Modifier.height(contentPadding.calculateBottomPadding()))
             }
         ) { padding ->
             if (uiState.isLoading) {
@@ -108,7 +118,8 @@ private fun SettingsContent(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding)
+                        .padding(horizontal = padding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), 
+                                 vertical = padding.calculateTopPadding())
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(32.dp)
@@ -139,6 +150,15 @@ private fun SettingsContent(
                             subtitle = "Prices, categories, and items",
                             onClick = {
                                 onNavigateToServices?.invoke() ?: onFeatureNotAvailable("Laundry Services")
+                            }
+                        )
+                        SettingsItem(
+                            icon = Icons.Rounded.AddCircleOutline,
+                            iconColor = Color(0xFF4CAF50),
+                            title = "Equipment Setup",
+                            subtitle = "Add new washing and drying machines",
+                            onClick = {
+                                onNavigateToEquipmentSetup?.invoke() ?: onFeatureNotAvailable("Equipment Setup")
                             }
                         )
                         SettingsItem(

@@ -13,6 +13,7 @@ fun OrderBatchEntity.toDomain() = OrderBatch(
     machineId = machineId,
     weightKg = weightKg,
     status = status,
+    serviceType = serviceType,
     startTime = startTime,
     endTime = endTime
 )
@@ -23,6 +24,7 @@ fun OrderBatch.toEntity() = OrderBatchEntity(
     machineId = machineId,
     weightKg = weightKg,
     status = status,
+    serviceType = serviceType,
     startTime = startTime,
     endTime = endTime
 )

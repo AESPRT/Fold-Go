@@ -10,9 +10,15 @@ import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import com.aesprt.foldgo.MainActivity
 import com.aesprt.foldgo.R
+import com.aesprt.foldgo.data.local.PreferenceManager
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import java.util.Locale
 
-class NotificationHelper(private val context: Context) {
+class NotificationHelper(
+    private val context: Context,
+    private val preferenceManager: PreferenceManager
+) {
 
     companion object {
         const val MACHINE_CHANNEL_ID = "machine_alerts"
@@ -52,6 +58,9 @@ class NotificationHelper(private val context: Context) {
         batchId: String,
         orderId: String
     ) {
+        val isEnabled = runBlocking { preferenceManager.isNotificationsEnabled.first() }
+        if (!isEnabled) return
+
         val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -90,6 +99,9 @@ class NotificationHelper(private val context: Context) {
      * Fallback notification when batch info is not available
      */
     fun showMachineCompletionNotification(machineName: String, orderId: String? = null) {
+        val isEnabled = runBlocking { preferenceManager.isNotificationsEnabled.first() }
+        if (!isEnabled) return
+
         val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
         val intent = Intent(context, MainActivity::class.java).apply {

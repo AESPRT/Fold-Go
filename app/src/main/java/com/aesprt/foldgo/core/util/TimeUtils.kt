@@ -21,4 +21,8 @@ object TimeUtils {
         val seconds = TimeUnit.MILLISECONDS.toSeconds(durationMillis) % 60
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
+
+    fun formatTime(minutes: Long, seconds: Long): String {
+        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
 }

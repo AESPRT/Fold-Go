@@ -28,13 +28,15 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun HistoryScreen(
     onOrderClick: (String) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(),
     viewModel: HistoryViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     HistoryContent(
         uiState = uiState,
-        onOrderClick = onOrderClick
+        onOrderClick = onOrderClick,
+        contentPadding = contentPadding
     )
 }
 
@@ -42,7 +44,8 @@ fun HistoryScreen(
 @Composable
 fun HistoryContent(
     uiState: HistoryUiState,
-    onOrderClick: (String) -> Unit
+    onOrderClick: (String) -> Unit,
+    contentPadding: PaddingValues = PaddingValues()
 ) {
     ModernBackground {
         Scaffold(
@@ -59,6 +62,10 @@ fun HistoryContent(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     windowInsets = WindowInsets.statusBars
                 )
+            },
+            bottomBar = {
+                // Reserve space for the floating bottom bar
+                Spacer(modifier = Modifier.height(contentPadding.calculateBottomPadding()))
             }
         ) { padding ->
             if (uiState.isLoading) {
@@ -75,10 +82,19 @@ fun HistoryContent(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        top = padding.calculateTopPadding(),
+                        bottom = padding.calculateBottomPadding() + 16.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    item {
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+
                     items(uiState.orders) { order ->
                         OrderCard(
                             order = order,

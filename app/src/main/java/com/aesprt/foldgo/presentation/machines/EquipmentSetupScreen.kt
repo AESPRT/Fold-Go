@@ -1,4 +1,4 @@
-package com.aesprt.foldgo.presentation.services
+package com.aesprt.foldgo.presentation.machines
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,47 +16,44 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.aesprt.foldgo.core.util.IdGeneratorUtils
-import com.aesprt.foldgo.core.util.PriceFormatter
-import com.aesprt.foldgo.domain.model.Service
-import com.aesprt.foldgo.domain.model.enums.ServiceType
+import com.aesprt.foldgo.core.util.MachineUtils
+import com.aesprt.foldgo.domain.model.Machine
+import com.aesprt.foldgo.domain.model.enums.MachineStatus
+import com.aesprt.foldgo.domain.model.enums.MachineType
+import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
-import com.aesprt.foldgo.presentation.order.components.ServiceAddDialog
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun ServicesScreen(
+fun EquipmentSetupScreen(
     onNavigateBack: () -> Unit,
-    viewModel: ServicesViewModel = koinViewModel()
+    onNavigateToAddMachine: () -> Unit,
+    viewModel: MachineViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    ServicesContent(
+    EquipmentSetupContent(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
-        onAddService = viewModel::addService,
-        onDeleteService = viewModel::deleteService
+        onNavigateToAddMachine = onNavigateToAddMachine
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServicesContent(
-    uiState: ServicesUiState,
+fun EquipmentSetupContent(
+    uiState: MachineUiState,
     onNavigateBack: () -> Unit,
-    onAddService: (Service) -> Unit,
-    onDeleteService: (Service) -> Unit
+    onNavigateToAddMachine: () -> Unit
 ) {
-    var showAddDialog by remember { mutableStateOf(false) }
-
     ModernBackground {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text("Laundry Services", fontWeight = FontWeight.Bold) },
+                    title = { Text("Equipment Setup", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -67,7 +64,7 @@ fun ServicesContent(
             },
             floatingActionButton = {
                 ExtendedFloatingActionButton(
-                    onClick = { showAddDialog = true },
+                    onClick = onNavigateToAddMachine,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(20.dp),
@@ -75,7 +72,7 @@ fun ServicesContent(
                 ) {
                     Icon(Icons.Rounded.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Add Service", fontWeight = FontWeight.Bold)
+                    Text("Add Equipment", fontWeight = FontWeight.Bold)
                 }
             }
         ) { padding ->
@@ -83,6 +80,12 @@ fun ServicesContent(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     FoldGoLoading()
                 }
+            } else if (uiState.machines.isEmpty()) {
+                FoldGoEmptyState(
+                    message = "No equipment registered",
+                    description = "Add your first washing machine or dryer to start managing your shop's operations.",
+                    icon = Icons.Rounded.LocalLaundryService
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier
@@ -93,7 +96,7 @@ fun ServicesContent(
                 ) {
                     item {
                         Text(
-                            "Available Services",
+                            "Registered Equipment",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.ExtraBold,
@@ -101,61 +104,19 @@ fun ServicesContent(
                         )
                     }
 
-                    items(uiState.services) { service ->
-                        ServiceItem(
-                            service = service,
-                            onDelete = { onDeleteService(service) }
+                    items(uiState.machines) { machine ->
+                        EquipmentListItem(
+                            machine = machine
                         )
                     }
                 }
             }
         }
     }
-
-    if (showAddDialog) {
-        ServiceAddDialog(
-            title = "Add New Service",
-            confirmText = "Add Service",
-            showSaveAsPreset = false,
-            onDismiss = { showAddDialog = false },
-            onConfirm = { name, qty, unit, price, type, _ ->
-                onAddService(
-                    Service(
-                        serviceId = IdGeneratorUtils.generateUniqueId("svc"),
-                        shopId = "", // Filled by ViewModel
-                        name = name,
-                        defaultQuantity = qty,
-                        unit = unit,
-                        pricePerUnit = price,
-                        type = type
-                    )
-                )
-                showAddDialog = false
-            }
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ServicesScreenPreview() {
-    FoldGoTheme {
-        ServicesContent(
-            uiState = ServicesUiState(
-                services = listOf(
-                    Service("1", "shop1", "Wash & Dry", 5.0, "KG", 65.0, ServiceType.WASH_DRY),
-                    Service("2", "shop1", "Ironing", 1.0, "PCS", 25.0, ServiceType.IRON)
-                )
-            ),
-            onNavigateBack = {},
-            onAddService = {},
-            onDeleteService = {}
-        )
-    }
 }
 
 @Composable
-fun ServiceItem(service: Service, onDelete: () -> Unit) {
+fun EquipmentListItem(machine: Machine) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -168,35 +129,18 @@ fun ServiceItem(service: Service, onDelete: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Service Type Icon
+            // Machine Type Icon
+            val typeColor = MachineUtils.getMachineTypeColor(machine.type)
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = when (service.type) {
-                    ServiceType.WASH -> Color(0xFF2196F3).copy(alpha = 0.1f)
-                    ServiceType.DRY -> Color(0xFFFF9800).copy(alpha = 0.1f)
-                    ServiceType.WASH_DRY -> Color(0xFF9C27B0).copy(alpha = 0.1f)
-                    ServiceType.IRON -> Color(0xFFE91E63).copy(alpha = 0.1f)
-                    ServiceType.OTHER -> Color(0xFF607D8B).copy(alpha = 0.1f)
-                }
+                color = typeColor.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = when (service.type) {
-                            ServiceType.WASH -> Icons.Rounded.LocalLaundryService
-                            ServiceType.DRY -> Icons.Rounded.Air
-                            ServiceType.WASH_DRY -> Icons.Rounded.AllInclusive
-                            ServiceType.IRON -> Icons.Rounded.Iron
-                            ServiceType.OTHER -> Icons.Rounded.Category
-                        },
+                        imageVector = MachineUtils.getMachineIcon(machine.type),
                         contentDescription = null,
-                        tint = when (service.type) {
-                            ServiceType.WASH -> Color(0xFF2196F3)
-                            ServiceType.DRY -> Color(0xFFFF9800)
-                            ServiceType.WASH_DRY -> Color(0xFF9C27B0)
-                            ServiceType.IRON -> Color(0xFFE91E63)
-                            ServiceType.OTHER -> Color(0xFF607D8B)
-                        },
+                        tint = typeColor,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -204,7 +148,7 @@ fun ServiceItem(service: Service, onDelete: () -> Unit) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = service.name,
+                    text = machine.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -215,32 +159,49 @@ fun ServiceItem(service: Service, onDelete: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = PriceFormatter.format(service.pricePerUnit),
+                        text = "${machine.capacityKg} kg",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "/ ${service.unit.lowercase()}",
+                        text = "• ${machine.type.name.lowercase().replace("_", " ")}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            IconButton(
-                onClick = onDelete,
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.05f),
-                    contentColor = MaterialTheme.colorScheme.error
-                )
+            // Status Indicator
+            Surface(
+                color = MachineUtils.getStatusColor(machine.status).copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(
-                    Icons.Rounded.DeleteOutline,
-                    contentDescription = "Delete",
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = machine.status.name,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MachineUtils.getStatusColor(machine.status),
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EquipmentSetupPreview() {
+    FoldGoTheme {
+        EquipmentSetupContent(
+            uiState = MachineUiState(
+                machines = listOf(
+                    Machine("1", "shop1", "Washer 01", MachineType.WASHER, 8.0, MachineStatus.IDLE, 0L),
+                    Machine("2", "shop1", "Dryer 02", MachineType.DRYER, 10.0, MachineStatus.BUSY, 0L)
+                )
+            ),
+            onNavigateBack = {},
+            onNavigateToAddMachine = {}
+        )
     }
 }

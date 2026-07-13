@@ -135,12 +135,19 @@ class MachineViewModel(
         }
     }
 
-    fun startCycle(machineId: String, durationMinutes: Int, orderId: String? = null, assignedWeight: Double? = null) {
+    fun startCycle(
+        machineId: String,
+        durationMinutes: Int,
+        orderId: String? = null,
+        assignedWeight: Double? = null,
+        serviceType: ServiceType? = null
+    ) {
         viewModelScope.launch {
             Log.e("adriel-testing", "machineId: $machineId")
             Log.e("adriel-testing", "orderId: $orderId")
+            Log.e("adriel-testing", "serviceType: $serviceType")
             orderId?.let { id ->
-                startMachineCycleUseCase(machineId, id,durationMinutes)
+                startMachineCycleUseCase(machineId, id, durationMinutes)
                 val order = getOrderByIdUseCase(id).firstOrNull()
                 val machine = getMachinesUseCase().first().find { it.machineId == machineId }
 
@@ -148,10 +155,14 @@ class MachineViewModel(
                     Log.e("adriel-testing", "machine: Name: ${machine.name}, Id: ${machine.machineId}")
                     val allBatches = getBatchesByOrderIdUseCase(id).first()
 
-                    val processedWeight = allBatches.sumOf { it.weightKg }
-                    val remainingWeight = (order.items.sumOf { it.quantity } - processedWeight).coerceAtLeast(0.0)
+                    // If serviceType is provided, we calculate remaining weight FOR THAT TYPE
+                    val targetServiceType = serviceType ?: order.items.firstOrNull()?.type ?: ServiceType.WASH_DRY
+                    
+                    val processedWeightForType = allBatches.filter { it.serviceType == targetServiceType }.sumOf { it.weightKg }
+                    val totalWeightForType = order.items.filter { it.type == targetServiceType }.sumOf { it.quantity }
+                    val remainingWeightForType = (totalWeightForType - processedWeightForType).coerceAtLeast(0.0)
 
-                    val weight = assignedWeight ?: remainingWeight
+                    val weight = assignedWeight ?: remainingWeightForType
 
                     // 1. Determine the status for this new batch/segment
                     val batchStatus = when (machine.type) {
@@ -169,8 +180,8 @@ class MachineViewModel(
                                 )
                             }.sumOf { it.weightKg }
 
-                            val totalWeight = order.items.sumOf { it.quantity }
-                            if (washedAndDriedWeight < totalWeight) OrderStatus.WASHING_AND_DRYING else OrderStatus.FOLDING
+                            val totalOrderWeight = order.items.sumOf { it.quantity }
+                            if (washedAndDriedWeight < totalOrderWeight) OrderStatus.WASHING_AND_DRYING else OrderStatus.FOLDING
                         }
                         MachineType.WASHER -> OrderStatus.WASHING
                         MachineType.DRYER -> OrderStatus.DRYING
@@ -178,15 +189,18 @@ class MachineViewModel(
                         else -> OrderStatus.FOLDING
                     }
 
-                    // 2. ONLY create a Batch object if we are splitting the order
-                    // (remaining weight > capacity) OR if we already have batches for this order
-                    if (remainingWeight > (machine.capacityKg + 0.01) || allBatches.isNotEmpty()) {
+                    // 2. ALWAYS create a Batch object if we are using specific service types or splitting
+                    // In a multi-service order, we MUST use batches to track which part is where.
+                    val isMultiService = order.items.map { it.type }.distinct().size > 1
+                    
+                    if (remainingWeightForType > (machine.capacityKg + 0.01) || allBatches.isNotEmpty() || isMultiService) {
                         val batch = OrderBatch(
                             batchId = IdGeneratorUtils.generateUniqueId("batch"),
                             orderId = id,
                             machineId = machineId,
                             weightKg = weight,
                             status = batchStatus,
+                            serviceType = targetServiceType,
                             startTime = System.currentTimeMillis(),
                             endTime = System.currentTimeMillis() + (durationMinutes * 60000)
                         )
@@ -194,10 +208,10 @@ class MachineViewModel(
                     }
 
                     // 3. Update order status based on what we just started
-                    val updatedBatches = if (remainingWeight > (machine.capacityKg + 0.01) || allBatches.isNotEmpty()) {
+                    val updatedBatches = if (remainingWeightForType > (machine.capacityKg + 0.01) || allBatches.isNotEmpty() || isMultiService) {
                         allBatches + listOf(OrderBatch(
                             batchId = "temp", orderId = id, machineId = machineId, weightKg = weight,
-                            status = batchStatus, startTime = System.currentTimeMillis()
+                            status = batchStatus, serviceType = targetServiceType, startTime = System.currentTimeMillis()
                         ))
                     } else emptyList()
 

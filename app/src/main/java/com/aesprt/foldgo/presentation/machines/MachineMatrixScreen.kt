@@ -5,7 +5,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material3.*
@@ -13,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.domain.model.Machine
@@ -31,18 +29,18 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun MachineMatrixScreen(
-    onAddNewMachine: () -> Unit,
     onMachineClick: (String) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(),
     viewModel: MachineViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     MachineMatrixContent(
         uiState = uiState,
-        onAddNewMachine = onAddNewMachine,
         onMachineClick = onMachineClick,
         onFilterTypeChanged = viewModel::onFilterTypeChanged,
-        onFinishCycle = viewModel::finishCycle
+        onFinishCycle = viewModel::finishCycle,
+        contentPadding = contentPadding
     )
 }
 
@@ -50,10 +48,10 @@ fun MachineMatrixScreen(
 @Composable
 fun MachineMatrixContent(
     uiState: MachineUiState,
-    onAddNewMachine: () -> Unit,
     onMachineClick: (String) -> Unit,
     onFilterTypeChanged: (MachineType?) -> Unit,
-    onFinishCycle: (String) -> Unit
+    onFinishCycle: (String) -> Unit,
+    contentPadding: PaddingValues = PaddingValues()
 ) {
     ModernBackground {
         Scaffold(
@@ -71,17 +69,16 @@ fun MachineMatrixContent(
                     windowInsets = WindowInsets.statusBars
                 )
             },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = onAddNewMachine,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Add Machine")
-                }
+            bottomBar = {
+                // Reserve space for the floating bottom bar so FAB is pushed up correctly
+                Spacer(modifier = Modifier.height(contentPadding.calculateBottomPadding()))
             }
         ) { padding ->
-            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = padding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), 
+                         vertical = padding.calculateTopPadding())
+            ) {
                 // Analytics Summary
                 Row(
                     modifier = Modifier
@@ -130,7 +127,7 @@ fun MachineMatrixContent(
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(1),
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -160,7 +157,6 @@ fun MachineMatrixContentPreview() {
                 ),
                 availableTypes = listOf(MachineType.WASHER, MachineType.DRYER)
             ),
-            onAddNewMachine = {},
             onMachineClick = {},
             onFilterTypeChanged = {},
             onFinishCycle = {}

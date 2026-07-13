@@ -112,11 +112,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    // Navigation Host handles its own background internally.
-                    // We fill max size to allow backgrounds to extend behind bottom bar.
+                    // Pass innerPadding to NavHost so screens can respect bottom bar height
                     FoldGoNavHost(
                         navController = navController,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = innerPadding
                     )
                 }
             }

@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,8 +22,6 @@ import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.components.OrderCard
 import com.aesprt.foldgo.presentation.components.SummaryCard
 import androidx.compose.ui.tooling.preview.Preview
-import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.enums.OrderStatus
 import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
@@ -34,6 +31,7 @@ import org.koin.androidx.compose.koinViewModel
 fun DashboardScreen(
     onOrderClick: (String) -> Unit,
     onNewOrderClick: () -> Unit,
+    contentPadding: PaddingValues = PaddingValues(),
     viewModel: DashboardViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -42,7 +40,8 @@ fun DashboardScreen(
             uiState = uiState,
             onOrderClick = onOrderClick,
             onNewOrderClick = onNewOrderClick,
-            onAutoFinish = viewModel::autoFinishCycle
+            onAutoFinish = viewModel::autoFinishCycle,
+            contentPadding = contentPadding
         )
     }
 }
@@ -53,7 +52,8 @@ fun DashboardContent(
     uiState: DashboardUiState,
     onOrderClick: (String) -> Unit,
     onNewOrderClick: () -> Unit,
-    onAutoFinish: (String, String) -> Unit
+    onAutoFinish: (String, String) -> Unit,
+    contentPadding: PaddingValues = PaddingValues()
 ) {
     Scaffold(
         containerColor = Color.Transparent,
@@ -73,6 +73,10 @@ fun DashboardContent(
             FloatingActionButton(onClick = onNewOrderClick) {
                 Icon(Icons.Default.Add, contentDescription = "New Order")
             }
+        },
+        bottomBar = {
+            // Reserve space for the floating bottom bar so FAB is pushed up correctly
+            Spacer(modifier = Modifier.height(contentPadding.calculateBottomPadding()))
         }
     ) { padding ->
         if (uiState.isLoading) {
@@ -86,13 +90,20 @@ fun DashboardContent(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding() + 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Summary Grid (Always Visible)
+                item {
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
                 item {
                     Row(
                         modifier = Modifier
@@ -160,84 +171,18 @@ fun DashboardContent(
 
 @Preview(showBackground = true)
 @Composable
-fun DashboardContentLoadingPreview() {
-    FoldGoTheme {
-        DashboardContent(
-            uiState = DashboardUiState(isLoading = true),
-            onOrderClick = {},
-            onNewOrderClick = {},
-            onAutoFinish = {_, _ -> }
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DashboardContentEmptyPreview() {
-    FoldGoTheme {
-        DashboardContent(
-            uiState = DashboardUiState(orders = emptyList()),
-            onOrderClick = {},
-            onNewOrderClick = {},
-            onAutoFinish = {_, _ -> }
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
 fun DashboardContentPreview() {
     FoldGoTheme {
         DashboardContent(
             uiState = DashboardUiState(
-                orders = listOf(
-                    OrderWithMachine(
-                        Order(
-                            orderId = "1",
-                            shopId = "shop1",
-                            customerId = "cust1",
-                            customerName = "John Doe",
-                            customerPhone = "1234567890",
-                            orderNumber = "FG-1024",
-                            items = emptyList(),
-                            totalAmount = 25.0,
-                            paidAmount = 0.0,
-                            status = OrderStatus.INTAKE,
-                            intakePhotos = emptyList(),
-                            machineId = null,
-                            staffId = "staff1",
-                            staffName = "Operator 1",
-                            createdAt = System.currentTimeMillis(),
-                            updatedAt = System.currentTimeMillis()
-                        ),
-                        null
-                    ),
-                    OrderWithMachine(
-                        Order(
-                            orderId = "2",
-                            shopId = "shop1",
-                            customerId = "cust2",
-                            customerName = "Jane Doe",
-                            customerPhone = "9876543210",
-                            orderNumber = "FG-1025",
-                            items = emptyList(),
-                            totalAmount = 45.0,
-                            paidAmount = 45.0,
-                            status = OrderStatus.READY,
-                            intakePhotos = emptyList(),
-                            machineId = "M1",
-                            staffId = "staff1",
-                            staffName = "Operator 1",
-                            createdAt = System.currentTimeMillis(),
-                            updatedAt = System.currentTimeMillis()
-                        ),
-                        null
-                    )
-                )
+                orders = emptyList(),
+                totalIntakeAmount = 3385.0,
+                activeOrdersCount = 3,
+                totalSalesAmount = 3385.0
             ),
             onOrderClick = {},
             onNewOrderClick = {},
-            onAutoFinish = {_, _ -> }
+            onAutoFinish = { _, _ -> }
         )
     }
 }

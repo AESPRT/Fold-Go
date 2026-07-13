@@ -35,8 +35,8 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import org.koin.core.qualifier.named
 
 val dataModule = module {
-    single { PreferenceManager(androidContext()) }
-    single { NotificationHelper(androidContext()) }
+    single { PreferenceManager(androidContext(), get()) }
+    single { NotificationHelper(androidContext(), get()) }
     single { WorkManager.getInstance(androidContext()) }
 
     single {
@@ -81,7 +81,6 @@ val dataModule = module {
     single { get<FoldGoDatabase>().shopDao }
     single { get<FoldGoDatabase>().orderDao }
     single { get<FoldGoDatabase>().machineDao }
-    single { get<FoldGoDatabase>().inventoryDao }
     single { get<FoldGoDatabase>().staffDao }
     single { get<FoldGoDatabase>().machineCategoryDao }
     single { get<FoldGoDatabase>().serviceDao }
@@ -90,7 +89,6 @@ val dataModule = module {
     single<ShopRepository> { ShopRepositoryImpl(get()) }
     single<OrderRepository> { OrderRepositoryImpl(get()) }
     single<MachineRepository> { MachineRepositoryImpl(get(), get(), get()) }
-    single<InventoryRepository> { InventoryRepositoryImpl(get()) }
     single<StaffRepository> { StaffRepositoryImpl(get()) }
     single<ServiceRepository> { ServiceRepositoryImpl(get()) }
 

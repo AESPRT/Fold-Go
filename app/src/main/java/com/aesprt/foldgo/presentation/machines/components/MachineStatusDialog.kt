@@ -32,11 +32,12 @@ fun MachineStatusDialog(
     activeOrders: List<OrderWithBatches>,
     onDismiss: () -> Unit,
     onStatusChange: (String) -> Unit,
-    onStartCycle: (Int, String?, Double?) -> Unit,
+    onStartCycle: (Int, String?, Double?, ServiceType?) -> Unit,
     onFinishCycle: () -> Unit
 ) {
     var showStartCycleConfig by remember { mutableStateOf(false) }
     var selectedOrderId by remember { mutableStateOf<String?>(null) }
+    var selectedServiceType by remember { mutableStateOf<ServiceType?>(null) }
     var duration by remember { mutableStateOf("30") }
     var assignedWeight by remember { mutableStateOf("") }
 
@@ -57,28 +58,29 @@ fun MachineStatusDialog(
                     selectedOrderId = selectedOrderId,
                     onOrderSelected = { orderId ->
                         selectedOrderId = orderId
+                        selectedServiceType = null // Reset service type when order changes
                         val orderWithBatches = activeOrders.find { it.order.orderId == orderId }
                         if (orderWithBatches != null) {
-                            val totalWeight = orderWithBatches.order.items.sumOf { it.quantity }
-                            val hasPendingDry = orderWithBatches.order.status == OrderStatus.WASHED
-                            
-                            // Calculate weight already assigned to OTHER machines (BUSY batches)
-                            // or already finished in a previous washer cycle
-                            val weightInAction = when {
-                                hasPendingDry -> orderWithBatches.batches?.filter {
-                                    it.status == OrderStatus.DRIED
-                                }?.sumOf { it.weightKg }
-                                else -> orderWithBatches.batches?.filter {
-                                    it.status != OrderStatus.READY && it.status != OrderStatus.DELIVERED
-                                }?.sumOf { it.weightKg }
-                            } ?: 0.0
-
-                            Log.e("adriel-testing", "totalWeight Selected: $totalWeight")
-                            Log.e("adriel-testing", "weightInAction Selected: $weightInAction")
-                            Log.e("adriel-testing", "hasPendingDry Selected: $hasPendingDry")
-                            
-                            val remaining = (totalWeight - weightInAction).coerceAtLeast(0.0)
-                            assignedWeight = minOf(remaining, machine.capacityKg).toString()
+                            // If order only has one service type, auto-select it
+                            val serviceTypes = orderWithBatches.order.items.map { it.type }.distinct()
+                            if (serviceTypes.size == 1) {
+                                selectedServiceType = serviceTypes.first()
+                                updateAssignedWeight(orderWithBatches, serviceTypes.first(), machine) {
+                                    assignedWeight = it
+                                }
+                            } else {
+                                assignedWeight = "0.0"
+                            }
+                        }
+                    },
+                    selectedServiceType = selectedServiceType,
+                    onServiceTypeSelected = { type ->
+                        selectedServiceType = type
+                        val orderWithBatches = activeOrders.find { it.order.orderId == selectedOrderId }
+                        if (orderWithBatches != null) {
+                            updateAssignedWeight(orderWithBatches, type, machine) {
+                                assignedWeight = it
+                            }
                         }
                     },
                     duration = duration,
@@ -132,11 +134,12 @@ fun MachineStatusDialog(
                         onStartCycle(
                             duration.toIntOrNull() ?: 30, 
                             selectedOrderId, 
-                            assignedWeight.toDoubleOrNull()
+                            assignedWeight.toDoubleOrNull(),
+                            selectedServiceType
                         ) 
                     },
                     shape = RoundedCornerShape(12.dp),
-                    enabled = selectedOrderId != null
+                    enabled = selectedOrderId != null && selectedServiceType != null
                 ) {
                     Text(
                         text = "Start",
@@ -169,6 +172,8 @@ private fun StartCycleConfig(
     activeOrders: List<OrderWithBatches>,
     selectedOrderId: String?,
     onOrderSelected: (String?) -> Unit,
+    selectedServiceType: ServiceType?,
+    onServiceTypeSelected: (ServiceType) -> Unit,
     duration: String,
     onDurationChange: (String) -> Unit,
     assignedWeight: String,
@@ -364,6 +369,47 @@ private fun StartCycleConfig(
         }
 
         if (selectedOrderId != null && selectedOrderWithBatches != null) {
+            val serviceTypes = selectedOrderWithBatches.order.items.map { it.type }.distinct()
+            var serviceExpanded by remember { mutableStateOf(false) }
+
+            ExposedDropdownMenuBox(
+                expanded = serviceExpanded,
+                onExpandedChange = { serviceExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedServiceType?.name ?: "Select Service Item (Required)",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Service Type", style = MaterialTheme.typography.bodyMedium) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = serviceExpanded) },
+                    modifier = Modifier
+                        .menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                            enabled = true
+                        )
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    isError = selectedServiceType == null
+                )
+                ExposedDropdownMenu(
+                    expanded = serviceExpanded,
+                    onDismissRequest = { serviceExpanded = false }
+                ) {
+                    serviceTypes.forEach { type ->
+                        val typeWeight = selectedOrderWithBatches.order.items.filter { it.type == type }.sumOf { it.quantity }
+                        DropdownMenuItem(
+                            text = { 
+                                Text("${type.name} (${typeWeight}kg)") 
+                            },
+                            onClick = {
+                                onServiceTypeSelected(type)
+                                serviceExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
             val totalOrderWeight = selectedOrderWithBatches.order.items.sumOf { it.quantity }
             val weightAlreadyAssigned = selectedOrderWithBatches.batches?.sumOf { it.weightKg } ?: 0.0
             val currentTenderedWeight = assignedWeight.toDoubleOrNull() ?: 0.0
@@ -463,6 +509,33 @@ private fun StatusOption(
     }
 }
 
+private fun updateAssignedWeight(
+    orderWithBatches: OrderWithBatches,
+    serviceType: ServiceType,
+    machine: Machine,
+    onWeightCalculated: (String) -> Unit
+) {
+    val totalWeightForType = orderWithBatches.order.items
+        .filter { it.type == serviceType }
+        .sumOf { it.quantity }
+
+    val hasPendingDry = orderWithBatches.order.status == OrderStatus.WASHED && serviceType != ServiceType.DRY
+
+    // Calculate weight already assigned to machines (BUSY batches)
+    // or already finished in a previous washer cycle for this service type
+    val weightInAction = when {
+        hasPendingDry -> orderWithBatches.batches?.filter {
+            it.serviceType == serviceType && it.status == OrderStatus.DRIED
+        }?.sumOf { it.weightKg }
+        else -> orderWithBatches.batches?.filter {
+            it.serviceType == serviceType && it.status != OrderStatus.READY && it.status != OrderStatus.DELIVERED
+        }?.sumOf { it.weightKg }
+    } ?: 0.0
+
+    val remaining = (totalWeightForType - weightInAction).coerceAtLeast(0.0)
+    onWeightCalculated(minOf(remaining, machine.capacityKg).toString())
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
@@ -473,7 +546,7 @@ fun MachineStatusDialogPreview() {
             activeOrders = emptyList(),
             onDismiss = {},
             onStatusChange = {},
-            onStartCycle = { _, _, _ -> },
+            onStartCycle = { _, _, _, _ -> },
             onFinishCycle = {}
         )
     }
@@ -502,6 +575,8 @@ fun StartCycleConfigPreview() {
             activeOrders = emptyList(),
             selectedOrderId = null,
             onOrderSelected = {},
+            selectedServiceType = null,
+            onServiceTypeSelected = {},
             duration = "30",
             onDurationChange = {},
             assignedWeight = "0",

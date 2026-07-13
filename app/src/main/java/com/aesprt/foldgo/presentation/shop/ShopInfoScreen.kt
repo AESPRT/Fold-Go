@@ -18,23 +18,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.aesprt.foldgo.domain.model.Shop
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.ui.theme.DeepOceanBlue
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import com.aesprt.foldgo.ui.theme.MintGreen
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShopInfoScreen(
     onNavigateBack: () -> Unit,
     viewModel: ShopInfoViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var shopName by remember(uiState.shop) { mutableStateOf(uiState.shop?.name ?: "") }
-    var address by remember(uiState.shop) { mutableStateOf(uiState.shop?.address ?: "") }
-    var mobileNumber by remember(uiState.shop) { mutableStateOf(uiState.shop?.mobileNumber ?: "") }
 
     LaunchedEffect(uiState.isUpdateSuccess) {
         if (uiState.isUpdateSuccess) {
@@ -42,6 +41,24 @@ fun ShopInfoScreen(
             onNavigateBack()
         }
     }
+
+    ShopInfoContent(
+        uiState = uiState,
+        onNavigateBack = onNavigateBack,
+        onUpdateShop = viewModel::updateShop
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShopInfoContent(
+    uiState: ShopInfoUiState,
+    onNavigateBack: () -> Unit,
+    onUpdateShop: (Shop) -> Unit
+) {
+    var shopName by remember(uiState.shop) { mutableStateOf(uiState.shop?.name ?: "") }
+    var address by remember(uiState.shop) { mutableStateOf(uiState.shop?.address ?: "") }
+    var mobileNumber by remember(uiState.shop) { mutableStateOf(uiState.shop?.mobileNumber ?: "") }
 
     ModernBackground {
         Scaffold(
@@ -58,8 +75,8 @@ fun ShopInfoScreen(
                         if (!uiState.isLoading && uiState.shop != null) {
                             IconButton(
                                 onClick = {
-                                    uiState.shop?.let {
-                                        viewModel.updateShop(
+                                    uiState.shop.let {
+                                        onUpdateShop(
                                             it.copy(
                                                 name = shopName,
                                                 address = address,
@@ -96,7 +113,7 @@ fun ShopInfoScreen(
                         .fillMaxSize()
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
+                        .padding(top = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
                     // Immersive Header
@@ -228,7 +245,7 @@ fun ShopInfoScreen(
                             color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
                         ) {
                             Text(
-                                text = uiState.error ?: "An error occurred",
+                                text = uiState.error,
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(16.dp)
@@ -238,6 +255,29 @@ fun ShopInfoScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ShopInfoScreenPreview() {
+    FoldGoTheme {
+        ShopInfoContent(
+            uiState = ShopInfoUiState(
+                shop = Shop(
+                    shopId = "1",
+                    name = "Fold&Go Center",
+                    address = "123 Laundry St.",
+                    mobileNumber = "09123456789",
+                    ownerId = "owner1",
+                    pin = "1234",
+                    settings = emptyMap(),
+                    createdAt = System.currentTimeMillis()
+                )
+            ),
+            onNavigateBack = {},
+            onUpdateShop = {}
+        )
     }
 }
 
