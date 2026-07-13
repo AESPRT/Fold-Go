@@ -4,18 +4,29 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.aesprt.foldgo.domain.repository.ShopRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "foldgo_prefs")
 
-class PreferenceManager(private val context: Context) {
+class PreferenceManager(
+    private val context: Context,
+    private val shopRepository: ShopRepository
+) {
 
     companion object {
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val CURRENT_SHOP_ID = stringPreferencesKey("current_shop_id")
         private val CURRENT_STAFF_ID = stringPreferencesKey("current_staff_id")
         private val CURRENT_STAFF_NAME = stringPreferencesKey("current_staff_name")
+        
+        // Settings Keys for the Map
+        const val SMS_ENABLED_KEY = "sms_enabled"
+        const val NOTIFICATIONS_ENABLED_KEY = "notifications_enabled"
+        const val DARK_MODE_ENABLED_KEY = "dark_mode_enabled"
+        const val SMS_CREDITS_KEY = "sms_credits"
     }
 
     val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data
@@ -71,6 +82,61 @@ class PreferenceManager(private val context: Context) {
             } else {
                 preferences[CURRENT_STAFF_NAME] = name
             }
+        }
+    }
+
+    val isSmsEnabled: Flow<Boolean> = shopRepository.getFirstShop()
+        .map { it?.settings?.get(SMS_ENABLED_KEY)?.toBoolean() ?: true }
+
+    suspend fun setSmsEnabled(enabled: Boolean) {
+        val shop = shopRepository.getFirstShop().first() ?: return
+        val updatedSettings = shop.settings.toMutableMap().apply {
+            put(SMS_ENABLED_KEY, enabled.toString())
+        }
+        shopRepository.upsertShop(shop.copy(settings = updatedSettings))
+    }
+
+    val isNotificationsEnabled: Flow<Boolean> = shopRepository.getFirstShop()
+        .map { it?.settings?.get(NOTIFICATIONS_ENABLED_KEY)?.toBoolean() ?: true }
+
+    suspend fun setNotificationsEnabled(enabled: Boolean) {
+        val shop = shopRepository.getFirstShop().first() ?: return
+        val updatedSettings = shop.settings.toMutableMap().apply {
+            put(NOTIFICATIONS_ENABLED_KEY, enabled.toString())
+        }
+        shopRepository.upsertShop(shop.copy(settings = updatedSettings))
+    }
+
+    val isDarkModeEnabled: Flow<Boolean> = shopRepository.getFirstShop()
+        .map { it?.settings?.get(DARK_MODE_ENABLED_KEY)?.toBoolean() ?: false }
+
+    suspend fun setDarkModeEnabled(enabled: Boolean) {
+        val shop = shopRepository.getFirstShop().first() ?: return
+        val updatedSettings = shop.settings.toMutableMap().apply {
+            put(DARK_MODE_ENABLED_KEY, enabled.toString())
+        }
+        shopRepository.upsertShop(shop.copy(settings = updatedSettings))
+    }
+
+    val smsCredits: Flow<Int> = shopRepository.getFirstShop()
+        .map { it?.settings?.get(SMS_CREDITS_KEY)?.toIntOrNull() ?: 0 }
+
+    suspend fun setSmsCredits(credits: Int) {
+        val shop = shopRepository.getFirstShop().first() ?: return
+        val updatedSettings = shop.settings.toMutableMap().apply {
+            put(SMS_CREDITS_KEY, credits.toString())
+        }
+        shopRepository.upsertShop(shop.copy(settings = updatedSettings))
+    }
+
+    suspend fun deductSmsCredit() {
+        val shop = shopRepository.getFirstShop().first() ?: return
+        val current = shop.settings[SMS_CREDITS_KEY]?.toIntOrNull() ?: 0
+        if (current > 0) {
+            val updatedSettings = shop.settings.toMutableMap().apply {
+                put(SMS_CREDITS_KEY, (current - 1).toString())
+            }
+            shopRepository.upsertShop(shop.copy(settings = updatedSettings))
         }
     }
 }

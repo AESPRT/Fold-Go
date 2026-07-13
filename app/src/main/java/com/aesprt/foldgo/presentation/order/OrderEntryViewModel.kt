@@ -1,10 +1,13 @@
 package com.aesprt.foldgo.presentation.order
 
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.core.util.IdGeneratorUtils
 import com.aesprt.foldgo.data.local.PreferenceManager
 import com.aesprt.foldgo.domain.model.*
+import com.aesprt.foldgo.domain.model.enums.*
 import com.aesprt.foldgo.domain.usecase.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -13,6 +16,9 @@ data class OrderEntryUiState(
     val shopId: String = "",
     val customerName: String = "",
     val phoneNumber: String = "",
+    val phoneTextFieldValue: TextFieldValue = TextFieldValue(""),
+    val customerAddress: String = "",
+    val deliveryMethod: DeliveryMethod = DeliveryMethod.PICKUP,
     val selectedItems: List<ServiceItem> = emptyList(),
     val availableServices: List<Service> = emptyList(),
     val isSaving: Boolean = false,
@@ -84,8 +90,37 @@ class OrderEntryViewModel(
         _uiState.update { it.copy(customerName = name) }
     }
 
-    fun onPhoneNumberChange(phone: String) {
-        _uiState.update { it.copy(phoneNumber = phone) }
+    fun onPhoneNumberChange(value: TextFieldValue) {
+        val phone = value.text
+        val digitsOnly = phone.filter { it.isDigit() }
+        
+        val formatted = when {
+            digitsOnly.startsWith("09") -> "+639" + digitsOnly.drop(2)
+            digitsOnly.startsWith("9") && !digitsOnly.startsWith("99") -> "+639" + digitsOnly.drop(1)
+            digitsOnly.startsWith("639") -> "+$digitsOnly"
+            else -> phone
+        }.take(13) // +639 + 9 digits
+
+        val newSelection = if (formatted != value.text) {
+            TextRange(formatted.length)
+        } else {
+            value.selection
+        }
+
+        _uiState.update { 
+            it.copy(
+                phoneNumber = formatted,
+                phoneTextFieldValue = value.copy(text = formatted, selection = newSelection)
+            ) 
+        }
+    }
+
+    fun onCustomerAddressChange(address: String) {
+        _uiState.update { it.copy(customerAddress = address) }
+    }
+
+    fun onDeliveryMethodChange(method: DeliveryMethod) {
+        _uiState.update { it.copy(deliveryMethod = method) }
     }
 
     fun addItem(name: String, quantity: Double, unit: String, pricePerUnit: Double, type: ServiceType = ServiceType.WASH_DRY) {
@@ -123,18 +158,21 @@ class OrderEntryViewModel(
                     return@launch
                 }
 
+                val dbPhoneNumber = currentState.phoneNumber.replace("+", "").ifBlank { "" }
+
                 val order = Order(
                     orderId = IdGeneratorUtils.generateOrderId(),
                     shopId = shopId,
                     customerId = IdGeneratorUtils.generateCustomerId(),
                     customerName = currentState.customerName,
-                    customerPhone = currentState.phoneNumber,
+                    customerPhone = dbPhoneNumber,
+                    customerAddress = currentState.customerAddress,
                     orderNumber = "FG-${System.currentTimeMillis().toString().takeLast(4)}",
                     items = currentState.selectedItems,
                     totalAmount = currentState.totalAmount,
                     paidAmount = 0.0,
                     status = OrderStatus.INTAKE,
-                    deliveryMethod = DeliveryMethod.PICKUP,
+                    deliveryMethod = currentState.deliveryMethod,
                     paymentStatus = PaymentStatus.PENDING,
                     intakePhotos = emptyList(),
                     machineId = null,

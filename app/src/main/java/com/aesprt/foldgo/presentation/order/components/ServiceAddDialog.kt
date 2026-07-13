@@ -11,14 +11,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.aesprt.foldgo.domain.model.ServiceType
+import com.aesprt.foldgo.domain.model.enums.ServiceType
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceAddDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, qty: Double, unit: String, price: Double, type: ServiceType, saveAsPreset: Boolean) -> Unit
+    onConfirm: (name: String, qty: Double, unit: String, price: Double, type: ServiceType, saveAsPreset: Boolean) -> Unit,
+    title: String = "Add Service",
+    confirmText: String = "Add to Order",
+    showSaveAsPreset: Boolean = true
 ) {
     var name by remember { mutableStateOf("") }
     var qty by remember { mutableStateOf("1.0") }
@@ -31,7 +36,7 @@ fun ServiceAddDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Service", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+        title = { Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(scrollState),
@@ -51,7 +56,7 @@ fun ServiceAddDialog(
                     onExpandedChange = { expanded = !expanded }
                 ) {
                     OutlinedTextField(
-                        value = serviceType.name,
+                        value = serviceType.name.replace("_", " "),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Service Category") },
@@ -68,7 +73,7 @@ fun ServiceAddDialog(
                     ) {
                         ServiceType.entries.forEach { type ->
                             DropdownMenuItem(
-                                text = { Text(type.name) },
+                                text = { Text(type.name.replace("_", " ")) },
                                 onClick = {
                                     serviceType = type
                                     expanded = false
@@ -106,19 +111,21 @@ fun ServiceAddDialog(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Checkbox(
-                        checked = saveAsPreset,
-                        onCheckedChange = { saveAsPreset = it }
-                    )
-                    Text(
-                        "Save as predefined service",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
+                if (showSaveAsPreset) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Checkbox(
+                            checked = saveAsPreset,
+                            onCheckedChange = { saveAsPreset = it }
+                        )
+                        Text(
+                            "Save as predefined service",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
                 }
             }
         },
@@ -134,11 +141,22 @@ fun ServiceAddDialog(
                 },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Add to Order", style = MaterialTheme.typography.labelLarge)
+                Text(confirmText, style = MaterialTheme.typography.labelLarge)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel", style = MaterialTheme.typography.labelLarge) }
         }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ServiceAddDialogPreview() {
+    FoldGoTheme {
+        ServiceAddDialog(
+            onDismiss = {},
+            onConfirm = { _, _, _, _, _, _ -> }
+        )
+    }
 }

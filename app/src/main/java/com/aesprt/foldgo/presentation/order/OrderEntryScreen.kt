@@ -6,19 +6,22 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.TextFieldValue
+import com.aesprt.foldgo.R
 import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.domain.model.Service
 import com.aesprt.foldgo.domain.model.ServiceItem
+import com.aesprt.foldgo.domain.model.enums.DeliveryMethod
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.order.components.QuantityPromptDialog
 import com.aesprt.foldgo.presentation.order.components.ServiceAddDialog
@@ -40,10 +43,11 @@ fun OrderEntryScreen(
         onNavigateBack = onNavigateBack,
         onCustomerNameChange = viewModel::onCustomerNameChange,
         onPhoneNumberChange = viewModel::onPhoneNumberChange,
+        onCustomerAddressChange = viewModel::onCustomerAddressChange,
+        onDeliveryMethodChange = viewModel::onDeliveryMethodChange,
         onRemoveItem = viewModel::removeItem,
         onSaveOrder = viewModel::saveOrder,
         onClearError = viewModel::clearError,
-        onShowAddDialog = { showAddDialog = true },
         onPromptService = { serviceToPrompt = it }
     )
 
@@ -83,11 +87,12 @@ fun OrderEntryContent(
     uiState: OrderEntryUiState,
     onNavigateBack: () -> Unit,
     onCustomerNameChange: (String) -> Unit,
-    onPhoneNumberChange: (String) -> Unit,
+    onPhoneNumberChange: (TextFieldValue) -> Unit,
+    onCustomerAddressChange: (String) -> Unit,
+    onDeliveryMethodChange: (DeliveryMethod) -> Unit,
     onRemoveItem: (ServiceItem) -> Unit,
     onSaveOrder: () -> Unit,
     onClearError: () -> Unit,
-    onShowAddDialog: () -> Unit,
     onPromptService: (Service) -> Unit
 ) {
     LaunchedEffect(uiState.isSuccess) {
@@ -146,7 +151,7 @@ fun OrderEntryContent(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
-                        value = uiState.phoneNumber,
+                        value = uiState.phoneTextFieldValue,
                         onValueChange = onPhoneNumberChange,
                         label = {
                             Text(
@@ -156,8 +161,54 @@ fun OrderEntryContent(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+                        ),
+                        placeholder = { Text(stringResource(R.string.phone_number_sample), style = MaterialTheme.typography.bodySmall) }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = uiState.customerAddress,
+                        onValueChange = onCustomerAddressChange,
+                        label = {
+                            Text(
+                                "Customer Address",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        "Delivery Method",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        DeliveryMethod.entries.forEach { method ->
+                            FilterChip(
+                                selected = uiState.deliveryMethod == method,
+                                onClick = { onDeliveryMethodChange(method) },
+                                label = {
+                                    Text(
+                                        method.name.lowercase().replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -171,19 +222,6 @@ fun OrderEntryContent(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-
-                        TextButton(
-                            onClick = onShowAddDialog,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Service", style = MaterialTheme.typography.labelLarge)
-                        }
                     }
 
                     // Dynamic Quick Add Presets
@@ -333,10 +371,11 @@ fun OrderEntryContentPreview() {
             onNavigateBack = {},
             onCustomerNameChange = {},
             onPhoneNumberChange = {},
+            onCustomerAddressChange = {},
+            onDeliveryMethodChange = {},
             onRemoveItem = {},
             onSaveOrder = {},
             onClearError = {},
-            onShowAddDialog = {},
             onPromptService = {}
         )
     }

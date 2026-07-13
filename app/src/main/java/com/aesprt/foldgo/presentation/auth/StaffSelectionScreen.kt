@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.domain.model.Staff
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +30,24 @@ fun StaffSelectionScreen(
     viewModel: StaffSelectionViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    StaffSelectionContent(
+        uiState = uiState,
+        onStaffSelected = { staff ->
+            viewModel.selectStaff(staff)
+            onStaffSelected()
+        },
+        onAddStaff = viewModel::addStaff
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StaffSelectionContent(
+    uiState: StaffSelectionUiState,
+    onStaffSelected: (Staff) -> Unit,
+    onAddStaff: (String, String) -> Unit
+) {
     var showAddStaffDialog by remember { mutableStateOf(false) }
 
     ModernBackground {
@@ -66,10 +86,7 @@ fun StaffSelectionScreen(
                     items(uiState.staffList) { staff ->
                         StaffItem(
                             staff = staff,
-                            onClick = {
-                                viewModel.selectStaff(staff)
-                                onStaffSelected()
-                            }
+                            onClick = { onStaffSelected(staff) }
                         )
                     }
                 }
@@ -81,9 +98,26 @@ fun StaffSelectionScreen(
         AddStaffDialog(
             onDismiss = { showAddStaffDialog = false },
             onConfirm = { name, role ->
-                viewModel.addStaff(name, role)
+                onAddStaff(name, role)
                 showAddStaffDialog = false
             }
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun StaffSelectionContentPreview() {
+    FoldGoTheme {
+        StaffSelectionContent(
+            uiState = StaffSelectionUiState(
+                staffList = listOf(
+                    Staff("1", "shop1", "Juan", "Operator", true, 0L),
+                    Staff("2", "shop1", "Maria", "Manager", true, 0L)
+                )
+            ),
+            onStaffSelected = {},
+            onAddStaff = { _, _ -> }
         )
     }
 }

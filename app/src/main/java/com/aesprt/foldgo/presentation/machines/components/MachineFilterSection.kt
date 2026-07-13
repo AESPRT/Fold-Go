@@ -9,9 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
-import com.aesprt.foldgo.domain.model.MachineType
+import com.aesprt.foldgo.domain.model.enums.MachineType
+import com.aesprt.foldgo.ui.theme.FoldGoTheme
 
 @Composable
 fun MachineFilterSection(
@@ -42,5 +44,17 @@ fun MachineFilterSection(
                 shape = RoundedCornerShape(12.dp)
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MachineFilterSectionPreview() {
+    FoldGoTheme {
+        MachineFilterSection(
+            selectedType = MachineType.WASHER,
+            availableTypes = listOf(MachineType.WASHER, MachineType.DRYER),
+            onTypeSelected = {}
+        )
     }
 }

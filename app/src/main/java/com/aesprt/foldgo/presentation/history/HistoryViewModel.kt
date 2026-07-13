@@ -3,7 +3,7 @@ package com.aesprt.foldgo.presentation.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.enums.OrderStatus
 import com.aesprt.foldgo.domain.usecase.GetAllOrdersUseCase
 import kotlinx.coroutines.flow.*
 

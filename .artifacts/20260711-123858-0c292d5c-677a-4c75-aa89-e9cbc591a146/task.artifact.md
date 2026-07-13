@@ -1,6 +1,5 @@
 # Task Management
-- [/] Refactor `plan.md` to include Web Admin and expanded schema <!-- id: 0 -->
-    - [x] Analyze tech stack alignment with `libs.versions.toml` <!-- id: 1 -->
-    - [/] Draft new `plan.md` content <!-- id: 2 -->
-    - [ ] Add Mermaid diagrams for Flow and Architecture <!-- id: 3 -->
-    - [ ] Finalize Data Schema including Categories and Services <!-- id: 4 -->
+- [/] Fix split order bugs <!-- id: 0 -->
+    - [ ] Update `MachineViewModel` weight logic and order filtering <!-- id: 1 -->
+    - [ ] Update `MachineStatusDialog` order filtering for batches <!-- id: 2 -->
+    - [ ] Refine `OrderDetailScreen` progress display and logic <!-- id: 3 -->

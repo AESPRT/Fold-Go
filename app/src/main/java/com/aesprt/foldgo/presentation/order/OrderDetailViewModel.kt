@@ -2,7 +2,9 @@ package com.aesprt.foldgo.presentation.order
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aesprt.foldgo.data.local.PreferenceManager
 import com.aesprt.foldgo.domain.model.*
+import com.aesprt.foldgo.domain.model.enums.*
 import com.aesprt.foldgo.domain.usecase.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -11,6 +13,7 @@ data class OrderDetailUiState(
     val order: Order? = null,
     val machine: Machine? = null,
     val allMachines: List<Machine> = emptyList(),
+    val batches: List<OrderBatch> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
     val showSmsPrompt: Boolean = false,
@@ -23,7 +26,9 @@ class OrderDetailViewModel(
     private val getOrderByIdUseCase: GetOrderByIdUseCase,
     private val upsertOrderUseCase: UpsertOrderUseCase,
     private val getMachinesUseCase: GetMachinesUseCase,
-    private val sendSmsUseCase: SendSmsUseCase
+    private val getBatchesByOrderIdUseCase: GetBatchesByOrderIdUseCase,
+    private val sendSmsUseCase: SendSmsUseCase,
+    private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OrderDetailUiState())
@@ -37,13 +42,15 @@ class OrderDetailViewModel(
         viewModelScope.launch {
             combine(
                 getOrderByIdUseCase(orderId),
-                getMachinesUseCase()
-            ) { order, machines ->
+                getMachinesUseCase(),
+                getBatchesByOrderIdUseCase(orderId)
+            ) { order, machines, batches ->
                 val machine = machines.find { it.machineId == order?.machineId }
                 OrderDetailUiState(
                     order = order,
                     machine = machine,
                     allMachines = machines,
+                    batches = batches,
                     isLoading = false
                 )
             }.collect { state ->
@@ -82,8 +89,16 @@ class OrderDetailViewModel(
                 paymentStatus = paymentStatus,
                 updatedAt = System.currentTimeMillis()
             )
-            
-            _uiState.update { it.copy(pendingOrder = updatedOrder, showSmsPrompt = true) }
+
+            val isSmsEnabled = preferenceManager.isSmsEnabled.first()
+            val credits = preferenceManager.smsCredits.first()
+
+            if (isSmsEnabled && credits > 0) {
+                _uiState.update { it.copy(pendingOrder = updatedOrder, showSmsPrompt = true) }
+            } else {
+                _uiState.update { it.copy(pendingOrder = updatedOrder) }
+                completePendingUpdate()
+            }
         }
     }
 
@@ -94,7 +109,7 @@ class OrderDetailViewModel(
                 status = OrderStatus.DELIVERED,
                 updatedAt = System.currentTimeMillis()
             )
-            _uiState.update { it.copy(pendingOrder = updatedOrder, showSmsPrompt = true) }
+            upsertOrderUseCase(updatedOrder)
         }
     }
 
@@ -104,6 +119,7 @@ class OrderDetailViewModel(
             _uiState.update { it.copy(isSendingSms = true) }
             val result = sendSmsUseCase(order.customerPhone, message)
             if (result.isSuccess) {
+                preferenceManager.deductSmsCredit()
                 completePendingUpdate()
             } else {
                 _uiState.update { it.copy(isSendingSms = false, error = "Failed to send SMS. Please check internet connection.") }

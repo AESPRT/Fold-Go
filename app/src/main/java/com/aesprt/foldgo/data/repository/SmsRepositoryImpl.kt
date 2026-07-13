@@ -1,5 +1,6 @@
 package com.aesprt.foldgo.data.repository
 
+import com.aesprt.foldgo.BuildConfig
 import com.aesprt.foldgo.data.remote.SmsService
 import com.aesprt.foldgo.domain.repository.SmsRepository
 
@@ -8,15 +9,15 @@ class SmsRepositoryImpl(
 ) : SmsRepository {
     
     // TODO: Move this to Shop Settings or secure storage
-    private val apiKey = "504f64d26e9cc6f6142730dd83808f54"
+    private val apiKey = BuildConfig.SEMAPHORE_API_KEY
 
-    override suspend fun sendSms(number: String, message: String): Result<Unit> {
+    override suspend fun sendSms(fromNumber: String, toNumber: String, message: String): Result<Unit> {
         return try {
-            val response = smsService.sendSms(apiKey, number, message, "CommuTech")
+            val response = smsService.sendSms(apiKey, toNumber, message, "CommuTech")
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Failed to send SMS: ${response.errorBody()?.string()}"))
+                Result.failure(Exception("Semaphore Error: ${response.errorBody()?.string()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -14,7 +14,7 @@ import com.aesprt.foldgo.core.util.OrderStatusUtils
 import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.Order
-import com.aesprt.foldgo.domain.model.OrderStatus
+import com.aesprt.foldgo.domain.model.enums.OrderStatus
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -42,7 +42,11 @@ fun OrderCard(
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Column(
             modifier = Modifier
@@ -57,7 +61,8 @@ fun OrderCard(
                 Text(
                     text = order.orderNumber,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 StatusChip(status = order.status)
             }
@@ -67,12 +72,13 @@ fun OrderCard(
             Text(
                 text = order.customerName,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = order.customerPhone,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -80,14 +86,16 @@ fun OrderCard(
             Text(
                 text = "Total: ${PriceFormatter.format(order.totalAmount)}",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.ExtraBold
             )
             
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
                 text = "Items: ${order.items.size}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
             )
         }
     }

@@ -29,6 +29,8 @@ import com.aesprt.foldgo.ui.theme.MintGreen
 fun FoldGoLogo(
     modifier: Modifier = Modifier,
     iconSize: Dp = 48.dp,
+    title: String = "Fold&Go",
+    supportingText: String = "Freshly Managed",
     showText: Boolean = true,
     textColor: Color = MaterialTheme.colorScheme.onBackground
 ) {
@@ -77,7 +79,7 @@ fun FoldGoLogo(
         if (showText) {
             Column(verticalArrangement = Arrangement.Center) {
                 Text(
-                    text = "Fold&Go",
+                    text = title,
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontSize = (iconSize.value * 0.5f).sp,
                         letterSpacing = (-0.5).sp
@@ -86,7 +88,7 @@ fun FoldGoLogo(
                     color = textColor
                 )
                 Text(
-                    text = "Freshly Managed",
+                    text = supportingText,
                     style = MaterialTheme.typography.labelSmall,
                     color = textColor.copy(alpha = 0.6f),
                     letterSpacing = 1.sp

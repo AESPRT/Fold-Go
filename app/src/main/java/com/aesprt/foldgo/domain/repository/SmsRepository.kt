@@ -1,5 +1,5 @@
 package com.aesprt.foldgo.domain.repository
 
 interface SmsRepository {
-    suspend fun sendSms(number: String, message: String): Result<Unit>
+    suspend fun sendSms(fromNumber: String, toNumber: String, message: String): Result<Unit>
 }

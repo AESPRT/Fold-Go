@@ -1,9 +1,8 @@
 package com.aesprt.foldgo.data.repository
 
 import com.aesprt.foldgo.data.local.dao.OrderDao
-import com.aesprt.foldgo.data.local.entities.toDomain
-import com.aesprt.foldgo.data.local.entities.toEntity
 import com.aesprt.foldgo.domain.model.Order
+import com.aesprt.foldgo.data.local.entities.*
 import com.aesprt.foldgo.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

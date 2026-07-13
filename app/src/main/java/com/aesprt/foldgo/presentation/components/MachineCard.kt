@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.sp
 import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.core.util.TimeUtils
 import com.aesprt.foldgo.domain.model.Machine
-import com.aesprt.foldgo.domain.model.MachineStatus
-import com.aesprt.foldgo.domain.model.MachineType
+import com.aesprt.foldgo.domain.model.enums.MachineStatus
+import com.aesprt.foldgo.domain.model.enums.MachineType
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -61,6 +61,7 @@ fun MachineCard(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ),
         border = CardDefaults.outlinedCardBorder().copy(
             brush = SolidColor(statusColor.copy(alpha = 0.2f))
@@ -114,7 +115,7 @@ fun MachineCard(
                 Text(
                     text = "${machine.type.name.lowercase().replaceFirstChar { it.uppercase() }} • ${machine.capacityKg}kg",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
                 )
 
                 if (machine.status == MachineStatus.BUSY && machine.endTime != null) {

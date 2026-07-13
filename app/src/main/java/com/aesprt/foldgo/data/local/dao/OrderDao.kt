@@ -1,7 +1,7 @@
 package com.aesprt.foldgo.data.local.dao
 
 import androidx.room.*
-import com.aesprt.foldgo.data.local.entities.OrderEntity
+import com.aesprt.foldgo.data.local.entities.models.OrderEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -11,6 +11,9 @@ interface OrderDao {
 
     @Query("SELECT * FROM orders WHERE orderId = :orderId")
     fun getOrderById(orderId: String): Flow<OrderEntity?>
+
+    @Query("SELECT * FROM orders WHERE machineId = :machineId")
+    fun getOrderByMachineId(machineId: String): Flow<OrderEntity?>
 
     @Upsert
     suspend fun upsertOrder(order: OrderEntity)
