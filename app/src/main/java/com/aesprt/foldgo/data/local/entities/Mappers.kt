@@ -86,7 +86,6 @@ fun MachineCategoryEntity.toDomain(): MachineCategory {
     return MachineCategory(
         categoryId = categoryId,
         name = name,
-        type = type,
         iconName = iconName,
         colorHex = colorHex
     )
@@ -96,7 +95,6 @@ fun MachineCategory.toEntity(): MachineCategoryEntity {
     return MachineCategoryEntity(
         categoryId = categoryId,
         name = name,
-        type = type,
         iconName = iconName,
         colorHex = colorHex
     )

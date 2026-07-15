@@ -1,5 +1,5 @@
 package com.aesprt.foldgo.domain.model.enums
 
 enum class MachineStatus {
-    IDLE, BUSY, OUT_OF_ORDER
+    IDLE, WASHING, DRYING, FOLDING, OUT_OF_ORDER
 }

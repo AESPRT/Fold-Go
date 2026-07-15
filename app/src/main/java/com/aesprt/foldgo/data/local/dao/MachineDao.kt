@@ -18,9 +18,12 @@ interface MachineDao {
     @Query("SELECT * FROM machines WHERE machineId = :machineId")
     suspend fun getMachineById(machineId: String): MachineEntity?
 
-    @Query("UPDATE machines SET status = 'BUSY', endTime = :endTime, cyclesCount = cyclesCount + 1 WHERE machineId = :machineId")
-    suspend fun startCycle(machineId: String, endTime: Long)
+    @Query("UPDATE machines SET assignedOrderId = :orderId WHERE machineId = :machineId")
+    suspend fun assignOrder(machineId: String, orderId: String?)
 
-    @Query("UPDATE machines SET status = 'IDLE', endTime = NULL WHERE machineId = :machineId")
+    @Query("UPDATE machines SET status = 'BUSY', endTime = :endTime, cyclesCount = cyclesCount + 1, assignedOrderId = :orderId WHERE machineId = :machineId")
+    suspend fun startCycle(machineId: String, endTime: Long, orderId: String)
+
+    @Query("UPDATE machines SET status = 'IDLE', endTime = NULL, assignedOrderId = NULL WHERE machineId = :machineId")
     suspend fun finishCycle(machineId: String)
 }

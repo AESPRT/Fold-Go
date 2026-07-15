@@ -111,6 +111,7 @@ val domainModule = module {
     factory { UpdateMachineStatusUseCase(get()) }
     factory { StartMachineCycleUseCase(get()) }
     factory { FinishMachineCycleUseCase(get()) }
+    factory { AssignMachineToOrderUseCase(get()) }
 
     // Order & Service UseCases
     factory { GetAllOrdersUseCase(get()) }
@@ -144,7 +145,7 @@ val presentationModule = module {
     viewModel { OnboardingViewModel(get()) }
     viewModel { DashboardViewModel(get(), get(), get(), get()) }
     viewModel { HistoryViewModel(get()) }
-    viewModel { OrderEntryViewModel(get(), get(), get(), get()) }
+    viewModel { OrderEntryViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { (orderId: String) ->
         OrderDetailViewModel(
             orderId,

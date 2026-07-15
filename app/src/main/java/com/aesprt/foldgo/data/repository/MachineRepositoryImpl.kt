@@ -36,7 +36,7 @@ class MachineRepositoryImpl(
 
     override suspend fun startMachineCycle(machineId: String, orderId: String, durationMinutes: Int) {
         val endTime = System.currentTimeMillis() + (durationMinutes * 60 * 1000)
-        machineDao.startCycle(machineId, endTime)
+        machineDao.startCycle(machineId, endTime, orderId)
 
         val workRequest = OneTimeWorkRequestBuilder<MachineCompletionWorker>()
             .setInitialDelay(durationMinutes.toLong(), TimeUnit.MINUTES)
@@ -57,6 +57,10 @@ class MachineRepositoryImpl(
 
     override suspend fun finishMachineCycle(machineId: String) {
         machineDao.finishCycle(machineId)
+    }
+
+    override suspend fun assignOrder(machineId: String, orderId: String?) {
+        machineDao.assignOrder(machineId, orderId)
     }
 
     override fun getAllCategories(): Flow<List<MachineCategory>> {

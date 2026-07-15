@@ -14,9 +14,9 @@ import kotlinx.coroutines.launch
 data class MachineUiState(
     val machines: List<Machine> = emptyList(),
     val categories: List<MachineCategory> = emptyList(),
-    val availableTypes: List<MachineType> = emptyList(),
     val activeOrders: List<OrderWithBatches> = emptyList(),
-    val filteredType: MachineType? = null,
+    val selectedMachine: Machine? = null,
+    val selectedOrder: Order? = null,
     val isLoading: Boolean = false
 )
 
@@ -41,33 +41,36 @@ class MachineViewModel(
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
-    private val _filteredType = MutableStateFlow<MachineType?>(null)
+    private val _filteredStatus = MutableStateFlow<MachineStatus?>(null)
+    private val _selectedMachineId = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<MachineUiState> = combine(
         getMachinesUseCase(),
         getMachineCategoriesUseCase(),
         getAllOrdersUseCase(),
-        _filteredType
-    ) { machines, categories, orders, filter ->
-        val sortedMachines = if (filter == null) {
-            machines.sortedBy { it.type.name }
-        } else {
-            machines.filter { it.type == filter }
-        }
+        _filteredStatus,
+        _selectedMachineId
+    ) { machines, categories, orders, filter, selectedId ->
+        val filteredMachines = if (filter == null) machines else machines.filter { it.status == filter }
+        val sortedMachines = filteredMachines.sortedBy { it.name }
 
         val ordersWithBatches = orders.filter {
             it.status != OrderStatus.READY && it.status != OrderStatus.DELIVERED
         }.map { order ->
             val batches = getBatchesByOrderIdUseCase(order.orderId).first()
-            OrderWithBatches(order, batches)
+            val batchesDomain = batches.map { it }
+            OrderWithBatches(order, batchesDomain)
         }
+
+        val selectedMachine = machines.find { it.machineId == selectedId }
+        val selectedOrder = orders.find { it.orderId == selectedMachine?.assignedOrderId }
 
         MachineUiState(
             machines = sortedMachines,
             categories = categories,
-            availableTypes = machines.map { it.type }.distinct().sortedBy { it.name },
             activeOrders = ordersWithBatches,
-            filteredType = filter,
+            selectedMachine = selectedMachine,
+            selectedOrder = selectedOrder,
             isLoading = false
         )
     }
@@ -86,11 +89,11 @@ class MachineViewModel(
             getMachineCategoriesUseCase().first().let { categories ->
                 if (categories.isEmpty()) {
                     val defaultCategories = listOf(
-                        MachineCategory("cat_washer", "Washer", MachineType.WASHER),
-                        MachineCategory("cat_dryer", "Dryer", MachineType.DRYER),
-                        MachineCategory("cat_washer_dryer", "Washer & Dryer", MachineType.WASHER_DRYER),
-                        MachineCategory("cat_iron", "Iron", MachineType.IRON),
-                        MachineCategory("cat_steamer", "Steamer", MachineType.STEAMER)
+                        MachineCategory("cat_washer", "Washer"),
+                        MachineCategory("cat_dryer", "Dryer"),
+                        MachineCategory("cat_washer_dryer", "Washer & Dryer"),
+                        MachineCategory("cat_iron", "Iron"),
+                        MachineCategory("cat_steamer", "Steamer")
                     )
                     defaultCategories.forEach { addMachineCategoryUseCase(it) }
                 }
@@ -98,18 +101,21 @@ class MachineViewModel(
         }
     }
 
-    fun onFilterTypeChanged(type: MachineType?) {
-        _filteredType.value = type
+    fun onFilterStatusChanged(status: MachineStatus?) {
+        _filteredStatus.value = status
     }
 
-    fun addMachine(name: String, type: MachineType, capacity: Double) {
+    fun selectMachine(machineId: String?) {
+        _selectedMachineId.value = machineId
+    }
+
+    fun addMachine(name: String, capacity: Double) {
         viewModelScope.launch {
             val shopId = preferenceManager.currentShopId.first() ?: return@launch
             val newMachine = Machine(
                 machineId = IdGeneratorUtils.generateMachineId(),
                 shopId = shopId,
                 name = name,
-                type = type,
                 capacityKg = capacity,
                 status = MachineStatus.IDLE,
                 lastMaintenanceDate = System.currentTimeMillis()
@@ -118,12 +124,11 @@ class MachineViewModel(
         }
     }
 
-    fun addCategory(name: String, type: MachineType) {
+    fun addCategory(name: String) {
         viewModelScope.launch {
             val category = MachineCategory(
                 categoryId = "cat_${System.currentTimeMillis()}",
-                name = name,
-                type = type
+                name = name
             )
             addMachineCategoryUseCase(category)
         }
@@ -135,99 +140,18 @@ class MachineViewModel(
         }
     }
 
-    fun startCycle(
-        machineId: String,
-        durationMinutes: Int,
-        orderId: String? = null,
-        assignedWeight: Double? = null,
-        serviceType: ServiceType? = null
-    ) {
+    fun startCycle(machineId: String) {
         viewModelScope.launch {
-            Log.e("adriel-testing", "machineId: $machineId")
-            Log.e("adriel-testing", "orderId: $orderId")
-            Log.e("adriel-testing", "serviceType: $serviceType")
-            orderId?.let { id ->
-                startMachineCycleUseCase(machineId, id, durationMinutes)
-                val order = getOrderByIdUseCase(id).firstOrNull()
-                val machine = getMachinesUseCase().first().find { it.machineId == machineId }
-
-                if (order != null && machine != null) {
-                    Log.e("adriel-testing", "machine: Name: ${machine.name}, Id: ${machine.machineId}")
-                    val allBatches = getBatchesByOrderIdUseCase(id).first()
-
-                    // If serviceType is provided, we calculate remaining weight FOR THAT TYPE
-                    val targetServiceType = serviceType ?: order.items.firstOrNull()?.type ?: ServiceType.WASH_DRY
-                    
-                    val processedWeightForType = allBatches.filter { it.serviceType == targetServiceType }.sumOf { it.weightKg }
-                    val totalWeightForType = order.items.filter { it.type == targetServiceType }.sumOf { it.quantity }
-                    val remainingWeightForType = (totalWeightForType - processedWeightForType).coerceAtLeast(0.0)
-
-                    val weight = assignedWeight ?: remainingWeightForType
-
-                    // 1. Determine the status for this new batch/segment
-                    val batchStatus = when (machine.type) {
-                        MachineType.WASHER_DRYER -> {
-                            // For washer-dryer, start with washing if NOT ALL weight has been washed+dried yet
-                            val washedAndDriedWeight = allBatches.filter {
-                                it.status in listOf(
-                                    OrderStatus.WASHED_AND_DRIED,
-                                    OrderStatus.DRIED,
-                                    OrderStatus.WASHED,
-                                    OrderStatus.IRONING,
-                                    OrderStatus.IRONED,
-                                    OrderStatus.FOLDING,
-                                    OrderStatus.READY
-                                )
-                            }.sumOf { it.weightKg }
-
-                            val totalOrderWeight = order.items.sumOf { it.quantity }
-                            if (washedAndDriedWeight < totalOrderWeight) OrderStatus.WASHING_AND_DRYING else OrderStatus.FOLDING
-                        }
-                        MachineType.WASHER -> OrderStatus.WASHING
-                        MachineType.DRYER -> OrderStatus.DRYING
-                        MachineType.IRON -> OrderStatus.IRONING
-                        else -> OrderStatus.FOLDING
-                    }
-
-                    // 2. ALWAYS create a Batch object if we are using specific service types or splitting
-                    // In a multi-service order, we MUST use batches to track which part is where.
-                    val isMultiService = order.items.map { it.type }.distinct().size > 1
-                    
-                    if (remainingWeightForType > (machine.capacityKg + 0.01) || allBatches.isNotEmpty() || isMultiService) {
-                        val batch = OrderBatch(
-                            batchId = IdGeneratorUtils.generateUniqueId("batch"),
-                            orderId = id,
-                            machineId = machineId,
-                            weightKg = weight,
-                            status = batchStatus,
-                            serviceType = targetServiceType,
-                            startTime = System.currentTimeMillis(),
-                            endTime = System.currentTimeMillis() + (durationMinutes * 60000)
-                        )
-                        upsertOrderBatchUseCase(batch)
-                    }
-
-                    // 3. Update order status based on what we just started
-                    val updatedBatches = if (remainingWeightForType > (machine.capacityKg + 0.01) || allBatches.isNotEmpty() || isMultiService) {
-                        allBatches + listOf(OrderBatch(
-                            batchId = "temp", orderId = id, machineId = machineId, weightKg = weight,
-                            status = batchStatus, serviceType = targetServiceType, startTime = System.currentTimeMillis()
-                        ))
-                    } else emptyList()
-
-                    val newStatus = if (updatedBatches.isNotEmpty()) {
-                        determineBatchOrderStatus(order, updatedBatches)
-                    } else {
-                        batchStatus // If no split batches, order status IS the batch status
-                    }
-
-                    upsertOrderUseCase(order.copy(
-                        status = newStatus,
-                        machineId = machineId,
-                        updatedAt = System.currentTimeMillis()
-                    ))
-                }
-            }
+            // Find machine to get assignedOrderId
+            val machines = getMachinesUseCase().first()
+            val machine = machines.find { it.machineId == machineId } ?: return@launch
+            val orderId = machine.assignedOrderId ?: return@launch
+            
+            // Trigger domain logic
+            startMachineCycleUseCase(machineId, orderId, 30) // Default 30 mins for now
+            
+            // Update machine status to WASHING as per spec (first state in sequence)
+            updateMachineStatusUseCase(machineId, MachineStatus.WASHING.name)
         }
     }
 
@@ -245,16 +169,14 @@ class MachineViewModel(
         if (allBatches.isEmpty()) return order.status
 
         // Check what phases have active batches
-        val hasWashingDryingBatches = allBatches.any { it.status == OrderStatus.WASHING_AND_DRYING }
-        val hasWashingBatches = allBatches.any { it.status == OrderStatus.WASHING }
-        val hasDryingBatches = allBatches.any { it.status == OrderStatus.DRYING }
-        val hasIroningBatches = allBatches.any { it.status == OrderStatus.IRONING }
+        val hasWashingBatches = allBatches.any { it.status == BatchStatus.WASHING }
+        val hasDryingBatches = allBatches.any { it.status == BatchStatus.DRYING }
+        val hasFoldingBatches = allBatches.any { it.status == BatchStatus.FOLDING }
 
         return when {
-            hasWashingDryingBatches -> OrderStatus.WASHING_AND_DRYING
             hasWashingBatches -> OrderStatus.WASHING
             hasDryingBatches -> OrderStatus.DRYING
-            hasIroningBatches -> OrderStatus.IRONING
+            hasFoldingBatches -> OrderStatus.FOLDING
             else -> order.status
         }
     }

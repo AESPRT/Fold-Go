@@ -1,48 +1,62 @@
 package com.aesprt.foldgo.presentation.dashboard
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
+import com.aesprt.foldgo.core.util.DevicePreviews
 import com.aesprt.foldgo.core.util.PriceFormatter
-import com.aesprt.foldgo.presentation.components.FoldGoLogo
-import com.aesprt.foldgo.presentation.components.ModernBackground
-import com.aesprt.foldgo.presentation.components.OrderCard
-import com.aesprt.foldgo.presentation.components.SummaryCard
-import androidx.compose.ui.tooling.preview.Preview
-import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
-import com.aesprt.foldgo.presentation.components.FoldGoLoading
+import com.aesprt.foldgo.presentation.components.*
+import com.aesprt.foldgo.presentation.machines.MachineViewModel
+import com.aesprt.foldgo.presentation.order.OrderDetailContent
+import com.aesprt.foldgo.presentation.order.OrderDetailViewModel
+import com.aesprt.foldgo.ui.navigation.DashboardRoute
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
 fun DashboardScreen(
     onOrderClick: (String) -> Unit,
     onNewOrderClick: () -> Unit,
+    widthSizeClass: WindowWidthSizeClass,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: DashboardViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isTablet = widthSizeClass == WindowWidthSizeClass.Expanded
+
     ModernBackground {
-        DashboardContent(
-            uiState = uiState,
-            onOrderClick = onOrderClick,
-            onNewOrderClick = onNewOrderClick,
-            onAutoFinish = viewModel::autoFinishCycle,
-            contentPadding = contentPadding
-        )
+        if (isTablet) {
+            DashboardTabletContent(
+                uiState = uiState,
+                onNewOrderClick = onNewOrderClick,
+                onAutoFinish = viewModel::autoFinishCycle
+            )
+        } else {
+            DashboardContent(
+                uiState = uiState,
+                onOrderClick = onOrderClick,
+                onNewOrderClick = onNewOrderClick,
+                onAutoFinish = viewModel::autoFinishCycle,
+                contentPadding = contentPadding
+            )
+        }
     }
 }
 
@@ -169,20 +183,249 @@ fun DashboardContent(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun DashboardContentPreview() {
+fun DashboardTabletContent(
+    uiState: DashboardUiState,
+    onNewOrderClick: () -> Unit,
+    onAutoFinish: (String, String) -> Unit
+) {
+    var selectedOrderId by remember { mutableStateOf<String?>(null) }
+    
+    // Auto-select first order if none selected
+    LaunchedEffect(uiState.orders) {
+        if (selectedOrderId == null && uiState.orders.isNotEmpty()) {
+            selectedOrderId = uiState.orders.first().order.orderId
+        }
+    }
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(32.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Dashboard,
+                                contentDescription = null,
+                                modifier = Modifier.padding(6.dp),
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Fold&Go — Staff Console",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        text = "Tablet dashboard - Freshly Managed",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Button(
+                    onClick = onNewOrderClick,
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("New Order")
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 24.dp)
+        ) {
+            // Summary Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                SummaryCard(
+                    title = "Total Intake",
+                    value = PriceFormatter.format(uiState.totalIntakeAmount),
+                    icon = Icons.Rounded.Payments,
+                    iconColor = Color(0xFF4CAF50),
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryCard(
+                    title = "Active Orders",
+                    value = uiState.activeOrdersCount.toString(),
+                    icon = Icons.AutoMirrored.Rounded.ReceiptLong,
+                    iconColor = Color(0xFF03A9F4),
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryCard(
+                    title = "Total Sales (Revenue)",
+                    value = PriceFormatter.format(uiState.totalSalesAmount),
+                    icon = Icons.Rounded.Payments,
+                    iconColor = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f)
+                )
+                // Assuming idle machines could be added later, using a placeholder for now to match the image
+                SummaryCard(
+                    title = "Machines Idle",
+                    value = "4", // Placeholder
+                    icon = Icons.Rounded.LocalLaundryService,
+                    iconColor = Color(0xFFFFB300),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // Left Column: Recent Orders
+                Column(
+                    modifier = Modifier
+                        .weight(0.4f)
+                        .fillMaxHeight()
+                ) {
+                    Text(
+                        text = "Recent Orders",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    if (uiState.isLoading) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            FoldGoLoading()
+                        }
+                    } else if (uiState.orders.isEmpty()) {
+                        FoldGoEmptyState(
+                            message = "No active orders",
+                            description = "Tap the New Order button to start."
+                        )
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(uiState.orders) { orderWithMachine ->
+                                val isSelected = selectedOrderId == orderWithMachine.order.orderId
+                                OrderCard(
+                                    order = orderWithMachine.order,
+                                    machine = orderWithMachine.machine,
+                                    onClick = { selectedOrderId = orderWithMachine.order.orderId },
+                                    onTimerFinished = { orderWithMachine.machine?.let { onAutoFinish(it.machineId, orderWithMachine.order.orderId) } },
+                                    modifier = if (isSelected) {
+                                        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium)
+                                    } else Modifier
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Right Column: Order Details
+                Surface(
+                    modifier = Modifier
+                        .weight(0.6f)
+                        .fillMaxHeight(),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                ) {
+                    if (selectedOrderId != null) {
+                        val detailViewModel: OrderDetailViewModel = koinViewModel(key = selectedOrderId) { parametersOf(selectedOrderId) }
+                        val machineViewModel: MachineViewModel = koinViewModel()
+                        val detailUiState by detailViewModel.uiState.collectAsState()
+
+                        if (detailUiState.isLoading) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                FoldGoLoading()
+                            }
+                        } else if (detailUiState.order != null) {
+                            OrderDetailContent(
+                                order = detailUiState.order!!,
+                                machine = detailUiState.machine,
+                                allMachines = detailUiState.allMachines,
+                                availableAddOns = detailUiState.availableAddOns,
+                                batches = detailUiState.batches,
+                                onReady = detailViewModel::updateOrderPaymentAndDelivery,
+                                onOrderStatusClick = detailViewModel::updateOrderStatus,
+                                onDelivered = detailViewModel::markAsDelivered,
+                                onFinishCycle = machineViewModel::finishCycle
+                            )
+                        }
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Select an order to view details", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@DevicePreviews
+@Composable
+fun DashboardMobilePreview() {
     FoldGoTheme {
-        DashboardContent(
-            uiState = DashboardUiState(
-                orders = emptyList(),
-                totalIntakeAmount = 3385.0,
-                activeOrdersCount = 3,
-                totalSalesAmount = 3385.0
-            ),
-            onOrderClick = {},
-            onNewOrderClick = {},
-            onAutoFinish = { _, _ -> }
-        )
+        Scaffold(
+            bottomBar = {
+                FoldGoBottomBar(
+                    currentRoute = DashboardRoute::class.qualifiedName,
+                    onNavigate = {}
+                )
+            }
+        ) { padding ->
+            DashboardContent(
+                uiState = DashboardUiState(
+                    orders = emptyList(),
+                    totalIntakeAmount = 3385.0,
+                    activeOrdersCount = 3,
+                    totalSalesAmount = 3385.0
+                ),
+                onOrderClick = {},
+                onNewOrderClick = {},
+                onAutoFinish = { _, _ -> },
+                contentPadding = padding
+            )
+        }
+    }
+}
+
+@DevicePreviews
+@Composable
+fun DashboardTabletPreview() {
+    FoldGoTheme {
+        TabletScaffold(
+            currentRoute = DashboardRoute::class.qualifiedName,
+            onNavigate = {}
+        ) { _ ->
+            DashboardTabletContent(
+                uiState = DashboardUiState(
+                    orders = emptyList(),
+                    totalIntakeAmount = 5115.0,
+                    activeOrdersCount = 2,
+                    totalSalesAmount = 5215.0
+                ),
+                onNewOrderClick = {},
+                onAutoFinish = { _, _ -> }
+            )
+        }
     }
 }

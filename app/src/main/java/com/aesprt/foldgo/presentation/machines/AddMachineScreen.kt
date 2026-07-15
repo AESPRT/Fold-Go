@@ -19,8 +19,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aesprt.foldgo.core.util.MachineUtils
-import com.aesprt.foldgo.domain.model.enums.MachineType
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
@@ -30,49 +28,27 @@ fun AddMachineScreen(
     onNavigateBack: () -> Unit,
     viewModel: MachineViewModel = koinViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    var showAddCategoryDialog by remember { mutableStateOf(false) }
-
     AddMachineContent(
-        uiState = uiState,
         onNavigateBack = onNavigateBack,
-        onConfirmRegistration = { name, type, capacity ->
-            viewModel.addMachine(name, type, capacity)
+        onConfirmRegistration = { name, capacity ->
+            viewModel.addMachine(name, capacity)
             onNavigateBack()
-        },
-        onShowAddCategory = { showAddCategoryDialog = true }
+        }
     )
-
-    if (showAddCategoryDialog) {
-        AddCategoryDialog(
-            onDismiss = { showAddCategoryDialog = false },
-            onConfirm = { name, type ->
-                viewModel.addCategory(name, type)
-                showAddCategoryDialog = false
-            }
-        )
-    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddMachineContent(
-    uiState: MachineUiState,
     onNavigateBack: () -> Unit,
-    onConfirmRegistration: (String, MachineType, Double) -> Unit,
-    onShowAddCategory: () -> Unit
+    onConfirmRegistration: (String, Double) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(MachineType.WASHER) }
     var capacity by remember { mutableStateOf("") }
-    var brand by remember { mutableStateOf("") }
-    var modelNumber by remember { mutableStateOf("") }
     
-    val equipmentCategories = uiState.categories
-
     val scrollState = rememberScrollState()
 
-    val secondaryColor = MachineUtils.getMachineTypeColor(type)
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     ModernBackground {
         Scaffold(
@@ -111,7 +87,7 @@ fun AddMachineContent(
                             onClick = {
                                 val cap = capacity.toDoubleOrNull() ?: 0.0
                                 if (name.isNotBlank() && cap > 0) {
-                                    onConfirmRegistration(name, type, cap)
+                                    onConfirmRegistration(name, cap)
                                 }
                             },
                             enabled = name.isNotBlank() && capacity.isNotBlank(),
@@ -149,13 +125,13 @@ fun AddMachineContent(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Surface(
                             modifier = Modifier.size(120.dp),
-                            color = secondaryColor,
+                            color = primaryColor,
                             shape = RoundedCornerShape(24.dp),
                             shadowElevation = 8.dp
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = MachineUtils.getMachineIcon(type),
+                                    imageVector = Icons.Rounded.LocalLaundryService,
                                     contentDescription = null,
                                     modifier = Modifier.size(80.dp),
                                     tint = Color.White
@@ -164,65 +140,13 @@ fun AddMachineContent(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = MachineUtils.getMachineLabel(type),
+                            text = "MACHINE",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Black,
-                                color = secondaryColor,
+                                color = primaryColor,
                                 letterSpacing = 2.sp
                             )
                         )
-                    }
-                }
-
-                // 1. Equipment Type Selection (Modern Chips)
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Equipment Category",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        TextButton(onClick = onShowAddCategory) {
-                            Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Category", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                    
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        equipmentCategories.forEach { category ->
-                            FilterChip(
-                                selected = type == category.type,
-                                onClick = { type = category.type },
-                                label = { 
-                                    Text(
-                                        category.name,
-                                        style = MaterialTheme.typography.labelLarge
-                                    ) 
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = secondaryColor.copy(alpha = 0.2f),
-                                    selectedLabelColor = secondaryColor,
-                                    selectedLeadingIconColor = secondaryColor
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = type == category.type,
-                                    borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                    selectedBorderColor = secondaryColor
-                                )
-                            )
-                        }
                     }
                 }
 
@@ -237,48 +161,39 @@ fun AddMachineContent(
                         placeholder = { Text("e.g. Speed Queen 01", style = MaterialTheme.typography.titleSmall) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        leadingIcon = { Icon(Icons.Rounded.Settings, null, tint = secondaryColor) },
+                        leadingIcon = { Icon(Icons.Rounded.Settings, null, tint = primaryColor) },
                         singleLine = true
                     )
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        OutlinedTextField(
-                            value = capacity,
-                            onValueChange = { capacity = it },
-                            label = { Text("Capacity", style = MaterialTheme.typography.titleSmall) },
-                            suffix = { Text("kg", style = MaterialTheme.typography.titleSmall) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            leadingIcon = { Icon(Icons.Rounded.MonitorWeight, null, tint = secondaryColor) },
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = brand,
-                            onValueChange = { brand = it },
-                            label = { Text("Brand", style = MaterialTheme.typography.titleSmall) },
-                            placeholder = { Text("e.g. LG", style = MaterialTheme.typography.titleSmall) },
-                            modifier = Modifier.weight(1.2f),
-                            shape = RoundedCornerShape(16.dp),
-                            leadingIcon = { Icon(Icons.Rounded.Factory, null, tint = secondaryColor) },
-                            singleLine = true
-                        )
-                    }
-                }
-
-                // 3. Technical Details (Optional)
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Technical Details", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    
                     OutlinedTextField(
-                        value = modelNumber,
-                        onValueChange = { modelNumber = it },
-                        label = { Text("Model Number", style = MaterialTheme.typography.titleSmall) },
+                        value = capacity,
+                        onValueChange = { capacity = it },
+                        label = { Text("Capacity", style = MaterialTheme.typography.titleSmall) },
+                        suffix = { Text("kg", style = MaterialTheme.typography.titleSmall) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        leadingIcon = { Icon(Icons.Rounded.Fingerprint, null, tint = secondaryColor) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        leadingIcon = { Icon(Icons.Rounded.MonitorWeight, null, tint = primaryColor) },
                         singleLine = true
                     )
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Text(
+                                "Machine type is no longer required. Each machine now supports the full wash → dry cycle.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(100.dp))
@@ -287,91 +202,13 @@ fun AddMachineContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddCategoryDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String, MachineType) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(MachineType.WASHER) }
-    var expanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Equipment Category", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Category Name") },
-                    placeholder = { Text("e.g. Industrial Washer") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = type.name,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Base Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor(
-                            type = ExposedDropdownMenuAnchorType.PrimaryEditable, // Use PrimaryNotEditable if it's a read-only dropdown
-                            enabled = true
-                        ).fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        MachineType.entries.forEach { machineType ->
-                            DropdownMenuItem(
-                                text = { Text(machineType.name) },
-                                onClick = {
-                                    type = machineType
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { if (name.isNotBlank()) onConfirm(name, type) }) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
 fun AddMachineScreenPreview() {
     FoldGoTheme {
         AddMachineContent(
-            uiState = MachineUiState(
-                categories = listOf(
-                    com.aesprt.foldgo.domain.model.MachineCategory("1", "Washer", MachineType.WASHER),
-                    com.aesprt.foldgo.domain.model.MachineCategory("2", "Dryer", MachineType.DRYER),
-                    com.aesprt.foldgo.domain.model.MachineCategory("3", "Washer & Dryer", MachineType.WASHER_DRYER)
-                )
-            ),
             onNavigateBack = {},
-            onConfirmRegistration = { _, _, _ -> },
-            onShowAddCategory = {}
+            onConfirmRegistration = { _, _ -> }
         )
     }
 }

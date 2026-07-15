@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
@@ -36,8 +37,10 @@ fun MachineCard(
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val isMaintenanceDue = machine.cyclesCount >= 100
 
+    val isWorking = machine.status == MachineStatus.WASHING || machine.status == MachineStatus.DRYING
+
     LaunchedEffect(machine.status, machine.endTime) {
-        if (machine.status == MachineStatus.BUSY && machine.endTime != null) {
+        if (isWorking && machine.endTime != null) {
             while (currentTime < machine.endTime) {
                 delay(1000.milliseconds)
                 currentTime = System.currentTimeMillis()
@@ -47,7 +50,7 @@ fun MachineCard(
     }
 
     val statusColor = MachineUtils.getStatusColor(machine.status)
-    val icons = MachineUtils.getMachineIcon(machine.type)
+    val icon = Icons.Rounded.LocalLaundryService
 
     val containerColor by animateColorAsState(
         targetValue = statusColor.copy(alpha = 0.04f),
@@ -82,7 +85,7 @@ fun MachineCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = icons,
+                        imageVector = Icons.Rounded.LocalLaundryService,
                         contentDescription = null,
                         modifier = Modifier.size(32.dp),
                         tint = statusColor
@@ -113,12 +116,12 @@ fun MachineCard(
                 }
                 
                 Text(
-                    text = "${machine.type.name.lowercase().replaceFirstChar { it.uppercase() }} • ${machine.capacityKg}kg",
+                    text = "${machine.capacityKg}kg Capacity",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
                 )
 
-                if (machine.status == MachineStatus.BUSY && machine.endTime != null) {
+                if (isWorking && machine.endTime != null) {
                     val remaining = machine.endTime - currentTime
                     if (remaining > 0) {
                         Row(
@@ -183,7 +186,6 @@ fun MachineCardPreview() {
                     machineId = "1",
                     shopId = "1",
                     name = "Washer 01",
-                    type = MachineType.WASHER,
                     capacityKg = 8.0,
                     status = MachineStatus.IDLE,
                     lastMaintenanceDate = 0L
@@ -195,9 +197,8 @@ fun MachineCardPreview() {
                     machineId = "2",
                     shopId = "1",
                     name = "Dryer 02",
-                    type = MachineType.DRYER,
                     capacityKg = 10.0,
-                    status = MachineStatus.BUSY,
+                    status = MachineStatus.WASHING,
                     lastMaintenanceDate = 0L,
                     endTime = System.currentTimeMillis() + 600000,
                     cyclesCount = 105

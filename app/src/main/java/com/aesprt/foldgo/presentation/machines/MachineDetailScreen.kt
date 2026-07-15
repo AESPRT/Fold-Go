@@ -20,8 +20,6 @@ import androidx.compose.ui.unit.sp
 import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.enums.MachineStatus
-import com.aesprt.foldgo.domain.model.enums.MachineType
-import com.aesprt.foldgo.domain.model.enums.ServiceType
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.machines.components.MachineStatusDialog
@@ -42,8 +40,7 @@ fun MachineDetailScreen(
         machine = machine,
         onNavigateBack = onNavigateBack,
         onUpdateStatus = viewModel::updateStatus,
-        onStartCycle = viewModel::startCycle,
-        onFinishCycle = viewModel::finishCycle
+        onStartCycle = viewModel::startCycle
     )
 }
 
@@ -54,8 +51,7 @@ fun MachineDetailContent(
     machine: Machine?,
     onNavigateBack: () -> Unit,
     onUpdateStatus: (String, MachineStatus) -> Unit,
-    onStartCycle: (String, Int, String?, Double?, ServiceType?) -> Unit,
-    onFinishCycle: (String) -> Unit
+    onStartCycle: (String) -> Unit
 ) {
     var showStatusDialog by remember { mutableStateOf(false) }
 
@@ -106,7 +102,7 @@ fun MachineDetailContent(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = MachineUtils.getMachineIcon(machine.type),
+                                        imageVector = Icons.Rounded.LocalLaundryService,
                                         contentDescription = null,
                                         tint = Color.White,
                                         modifier = Modifier.size(32.dp)
@@ -116,7 +112,7 @@ fun MachineDetailContent(
                             Spacer(modifier = Modifier.width(20.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(machine.status.name, fontWeight = FontWeight.Black, color = statusColor, letterSpacing = 1.sp)
-                                Text("${machine.type.name} • ${machine.capacityKg}kg", style = MaterialTheme.typography.bodyMedium)
+                                Text("${machine.capacityKg}kg Capacity", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -172,14 +168,15 @@ fun MachineDetailContent(
     if (showStatusDialog && machine != null) {
         MachineStatusDialog(
             machine = machine,
-            activeOrders = uiState.activeOrders,
             onDismiss = { showStatusDialog = false },
             onStatusChange = { status ->
-                onUpdateStatus(machine.machineId, MachineStatus.valueOf(status))
+                onUpdateStatus(machine.machineId, status)
                 showStatusDialog = false
             },
-            onStartCycle = { duration, orderId, weight, serviceType -> onStartCycle(machine.machineId, duration, orderId, weight, serviceType); showStatusDialog = false },
-            onFinishCycle = { onFinishCycle(machine.machineId); showStatusDialog = false }
+            onStartCycle = { 
+                onStartCycle(machine.machineId)
+                showStatusDialog = false 
+            }
         )
     }
 }
@@ -194,17 +191,15 @@ fun MachineDetailContentPreview() {
                 machineId = "1",
                 shopId = "shop1",
                 name = "Washer 01",
-                type = MachineType.WASHER,
                 capacityKg = 8.0,
-                status = MachineStatus.BUSY,
+                status = MachineStatus.WASHING,
                 lastMaintenanceDate = 0L,
                 endTime = System.currentTimeMillis() + 600000,
                 cyclesCount = 42
             ),
             onNavigateBack = {},
             onUpdateStatus = { _, _ -> },
-            onStartCycle = { _, _, _, _, _ -> },
-            onFinishCycle = {}
+            onStartCycle = { _ -> }
         )
     }
 }
