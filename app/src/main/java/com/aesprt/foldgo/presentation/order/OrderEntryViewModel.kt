@@ -42,6 +42,7 @@ class OrderEntryViewModel(
     private val upsertServiceUseCase: UpsertServiceUseCase,
     private val getMachinesUseCase: GetMachinesUseCase,
     private val assignMachineToOrderUseCase: AssignMachineToOrderUseCase,
+    private val updateMachineStatusUseCase: UpdateMachineStatusUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -281,6 +282,9 @@ class OrderEntryViewModel(
                 
                 // Persist machine assignment
                 assignMachineToOrderUseCase(currentState.assignedMachine.machineId, orderId)
+                
+                // Update machine status to QUEUED
+                updateMachineStatusUseCase(currentState.assignedMachine.machineId, MachineStatus.QUEUED.name)
 
                 _uiState.update { it.copy(isSaving = false, isSuccess = true) }
             } catch (e: Exception) {

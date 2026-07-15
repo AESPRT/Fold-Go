@@ -35,7 +35,6 @@ import com.aesprt.foldgo.core.util.DevicePreviews
 import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
@@ -60,8 +59,6 @@ fun MachineMatrixScreen(
             }
         },
         onFilterStatusChanged = viewModel::onFilterStatusChanged,
-        onFinishCycle = viewModel::finishCycle,
-        onStartCycle = viewModel::startCycle,
         onUpdateStatus = viewModel::updateStatus,
         contentPadding = contentPadding
     )
@@ -74,8 +71,6 @@ fun MachineMatrixContent(
     isTablet: Boolean = false,
     onMachineClick: (String) -> Unit,
     onFilterStatusChanged: (MachineStatus?) -> Unit,
-    onFinishCycle: (String) -> Unit,
-    onStartCycle: (String) -> Unit = {},
     onUpdateStatus: (String, MachineStatus) -> Unit = { _, _ -> },
     contentPadding: PaddingValues = PaddingValues()
 ) {
@@ -85,8 +80,6 @@ fun MachineMatrixContent(
                 uiState = uiState,
                 onMachineClick = onMachineClick,
                 onFilterStatusChanged = onFilterStatusChanged,
-                onFinishCycle = onFinishCycle,
-                onStartCycle = onStartCycle,
                 onUpdateStatus = onUpdateStatus
             )
         } else {
@@ -175,8 +168,7 @@ fun MachineMatrixContent(
                             items(uiState.machines) { machine ->
                                 MachineCard(
                                     machine = machine,
-                                    onClick = { onMachineClick(machine.machineId) },
-                                    onTimerFinished = { onFinishCycle(machine.machineId) }
+                                    onClick = { onMachineClick(machine.machineId) }
                                 )
                             }
                         }
@@ -192,8 +184,6 @@ fun MachineMatrixTabletContent(
     uiState: MachineUiState,
     onMachineClick: (String) -> Unit,
     onFilterStatusChanged: (MachineStatus?) -> Unit,
-    onFinishCycle: (String) -> Unit,
-    onStartCycle: (String) -> Unit,
     onUpdateStatus: (String, MachineStatus) -> Unit
 ) {
     Row(
@@ -259,7 +249,6 @@ fun MachineMatrixTabletContent(
                         MachineCard(
                             machine = machine,
                             onClick = { onMachineClick(machine.machineId) },
-                            onTimerFinished = { onFinishCycle(machine.machineId) },
                             modifier = Modifier.then(
                                 if (isSelected) Modifier.border(
                                     2.dp,
@@ -345,7 +334,7 @@ fun MachineMatrixTabletContent(
                         fontWeight = FontWeight.Bold
                     )
 
-                    if (order == null && machine.status == MachineStatus.IDLE) {
+                    if (order == null) {
                         Surface(
                             color = Color(0xFFFFF9C4),
                             shape = RoundedCornerShape(12.dp),
@@ -365,49 +354,57 @@ fun MachineMatrixTabletContent(
                                         color = Color(0xFF827717)
                                     )
                                     Text(
-                                        "Create a new order and assign it here before starting a cycle.",
+                                        "Create a new order and assign it here before updating status.",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color(0xFF827717)
                                     )
                                 }
                             }
                         }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = { onStartCycle(machine.machineId) },
-                            modifier = Modifier.weight(1f),
-                            enabled = order != null && machine.status == MachineStatus.IDLE,
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Start Cycle")
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { onUpdateStatus(machine.machineId, MachineStatus.WASHING) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) { Text("Wash") }
+                                Button(
+                                    onClick = { onUpdateStatus(machine.machineId, MachineStatus.DRYING) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) { Text("Dry") }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { onUpdateStatus(machine.machineId, MachineStatus.IRONING) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) { Text("Iron") }
+                                Button(
+                                    onClick = { onUpdateStatus(machine.machineId, MachineStatus.FOLDING) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) { Text("Fold") }
+                            }
+                            Button(
+                                onClick = { onUpdateStatus(machine.machineId, MachineStatus.READY) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                            ) { Text("Mark Ready") }
                         }
-                        
-                        Button(
-                            onClick = { /* TODO: Show status picker */ },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Text(
-                                machine.status.name.lowercase()
-                                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() })
-                        }
-                    }
-                    
-                    if (order == null && machine.status == MachineStatus.IDLE) {
-                        Text(
-                            "Start Cycle is disabled until an order is assigned to this machine.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
+
+                    OutlinedButton(
+                        onClick = { onUpdateStatus(machine.machineId, MachineStatus.IDLE) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Set Idle")
+                    }
 
                     OutlinedButton(
                         onClick = { onUpdateStatus(machine.machineId, MachineStatus.OUT_OF_ORDER) },
@@ -440,12 +437,11 @@ fun MachineMatrixContentPreview() {
             uiState = MachineUiState(
                 machines = listOf(
                     Machine("1", "shop1", "Washer 01", 8.0, MachineStatus.IDLE, 0L),
-                    Machine("2", "shop1", "Dryer 01", 10.0, MachineStatus.WASHING, 0L, System.currentTimeMillis() + 600000)
+                    Machine("2", "shop1", "Dryer 01", 10.0, MachineStatus.WASHING, 0L, null)
                 )
             ),
             onMachineClick = {},
-            onFilterStatusChanged = {},
-            onFinishCycle = {}
+            onFilterStatusChanged = {}
         )
     }
 }
@@ -458,13 +454,11 @@ fun MachineMatrixContentTabletPreview() {
             uiState = MachineUiState(
                 machines = listOf(
                     Machine("1", "shop1", "Washer 01", 8.0, MachineStatus.IDLE, 0L),
-                    Machine("2", "shop1", "Dryer 01", 10.0, MachineStatus.WASHING, 0L, System.currentTimeMillis() + 600000)
+                    Machine("2", "shop1", "Dryer 01", 10.0, MachineStatus.WASHING, 0L, null)
                 )
             ),
             onMachineClick = {},
             onFilterStatusChanged = {},
-            onFinishCycle = {},
-            onStartCycle = {},
             onUpdateStatus = { _, _ -> }
         )
     }

@@ -14,7 +14,6 @@ data class OrderDetailUiState(
     val machine: Machine? = null,
     val allMachines: List<Machine> = emptyList(),
     val availableAddOns: List<AddOn> = emptyList(),
-    val batches: List<OrderBatch> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
     val showSmsPrompt: Boolean = false,
@@ -27,7 +26,6 @@ class OrderDetailViewModel(
     private val getOrderByIdUseCase: GetOrderByIdUseCase,
     private val upsertOrderUseCase: UpsertOrderUseCase,
     private val getMachinesUseCase: GetMachinesUseCase,
-    private val getBatchesByOrderIdUseCase: GetBatchesByOrderIdUseCase,
     private val sendSmsUseCase: SendSmsUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
@@ -58,17 +56,15 @@ class OrderDetailViewModel(
         viewModelScope.launch {
             combine(
                 getOrderByIdUseCase(orderId),
-                getMachinesUseCase(),
-                getBatchesByOrderIdUseCase(orderId)
-            ) { order, machines, batches ->
+                getMachinesUseCase()
+            ) { order, machines ->
                 val machine = machines.find { it.machineId == order?.machineId || it.assignedOrderId == order?.orderId }
-                Triple(order, machine, batches)
-            }.collect { (order, machine, batches) ->
+                Pair(order, machine)
+            }.collect { (order, machine) ->
                 _uiState.update { 
                     it.copy(
                         order = order,
                         machine = machine,
-                        batches = batches,
                         isLoading = false
                     )
                 }

@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.core.util.DevicePreviews
 import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.presentation.components.*
-import com.aesprt.foldgo.presentation.machines.MachineViewModel
 import com.aesprt.foldgo.presentation.order.OrderDetailContent
 import com.aesprt.foldgo.presentation.order.OrderDetailViewModel
 import com.aesprt.foldgo.ui.navigation.DashboardRoute
@@ -45,15 +44,13 @@ fun DashboardScreen(
         if (isTablet) {
             DashboardTabletContent(
                 uiState = uiState,
-                onNewOrderClick = onNewOrderClick,
-                onAutoFinish = viewModel::autoFinishCycle
+                onNewOrderClick = onNewOrderClick
             )
         } else {
             DashboardContent(
                 uiState = uiState,
                 onOrderClick = onOrderClick,
                 onNewOrderClick = onNewOrderClick,
-                onAutoFinish = viewModel::autoFinishCycle,
                 contentPadding = contentPadding
             )
         }
@@ -66,7 +63,6 @@ fun DashboardContent(
     uiState: DashboardUiState,
     onOrderClick: (String) -> Unit,
     onNewOrderClick: () -> Unit,
-    onAutoFinish: (String, String) -> Unit,
     contentPadding: PaddingValues = PaddingValues()
 ) {
     Scaffold(
@@ -173,8 +169,7 @@ fun DashboardContent(
                         OrderCard(
                             order = orderWithMachine.order,
                             machine = orderWithMachine.machine,
-                            onClick = { onOrderClick(orderWithMachine.order.orderId) },
-                            onTimerFinished = { orderWithMachine.machine?.let { onAutoFinish(it.machineId, orderWithMachine.order.orderId) } }
+                            onClick = { onOrderClick(orderWithMachine.order.orderId) }
                         )
                     }
                 }
@@ -186,8 +181,7 @@ fun DashboardContent(
 @Composable
 fun DashboardTabletContent(
     uiState: DashboardUiState,
-    onNewOrderClick: () -> Unit,
-    onAutoFinish: (String, String) -> Unit
+    onNewOrderClick: () -> Unit
 ) {
     var selectedOrderId by remember { mutableStateOf<String?>(null) }
     
@@ -329,7 +323,6 @@ fun DashboardTabletContent(
                                     order = orderWithMachine.order,
                                     machine = orderWithMachine.machine,
                                     onClick = { selectedOrderId = orderWithMachine.order.orderId },
-                                    onTimerFinished = { orderWithMachine.machine?.let { onAutoFinish(it.machineId, orderWithMachine.order.orderId) } },
                                     modifier = if (isSelected) {
                                         Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium)
                                     } else Modifier
@@ -349,7 +342,6 @@ fun DashboardTabletContent(
                 ) {
                     if (selectedOrderId != null) {
                         val detailViewModel: OrderDetailViewModel = koinViewModel(key = selectedOrderId) { parametersOf(selectedOrderId) }
-                        val machineViewModel: MachineViewModel = koinViewModel()
                         val detailUiState by detailViewModel.uiState.collectAsState()
 
                         if (detailUiState.isLoading) {
@@ -360,13 +352,10 @@ fun DashboardTabletContent(
                             OrderDetailContent(
                                 order = detailUiState.order!!,
                                 machine = detailUiState.machine,
-                                allMachines = detailUiState.allMachines,
                                 availableAddOns = detailUiState.availableAddOns,
-                                batches = detailUiState.batches,
                                 onReady = detailViewModel::updateOrderPaymentAndDelivery,
                                 onOrderStatusClick = detailViewModel::updateOrderStatus,
-                                onDelivered = detailViewModel::markAsDelivered,
-                                onFinishCycle = machineViewModel::finishCycle
+                                onDelivered = detailViewModel::markAsDelivered
                             )
                         }
                     } else {
@@ -401,7 +390,6 @@ fun DashboardMobilePreview() {
                 ),
                 onOrderClick = {},
                 onNewOrderClick = {},
-                onAutoFinish = { _, _ -> },
                 contentPadding = padding
             )
         }
@@ -423,8 +411,7 @@ fun DashboardTabletPreview() {
                     activeOrdersCount = 2,
                     totalSalesAmount = 5215.0
                 ),
-                onNewOrderClick = {},
-                onAutoFinish = { _, _ -> }
+                onNewOrderClick = {}
             )
         }
     }

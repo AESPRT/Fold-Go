@@ -5,8 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.LocalLaundryService
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,38 +17,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aesprt.foldgo.core.util.MachineUtils
-import com.aesprt.foldgo.core.util.TimeUtils
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.enums.MachineStatus
-import com.aesprt.foldgo.domain.model.enums.MachineType
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MachineCard(
     modifier: Modifier = Modifier,
     machine: Machine,
-    onClick: () -> Unit,
-    onTimerFinished: () -> Unit = {}
+    onClick: () -> Unit
 ) {
-    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val isMaintenanceDue = machine.cyclesCount >= 100
 
-    val isWorking = machine.status == MachineStatus.WASHING || machine.status == MachineStatus.DRYING
-
-    LaunchedEffect(machine.status, machine.endTime) {
-        if (isWorking && machine.endTime != null) {
-            while (currentTime < machine.endTime) {
-                delay(1000.milliseconds)
-                currentTime = System.currentTimeMillis()
-            }
-            onTimerFinished()
-        }
-    }
+    val isWorking = machine.status == MachineStatus.WASHING || machine.status == MachineStatus.DRYING || 
+                   machine.status == MachineStatus.IRONING || machine.status == MachineStatus.FOLDING
 
     val statusColor = MachineUtils.getStatusColor(machine.status)
-    val icon = Icons.Rounded.LocalLaundryService
+    val icon = MachineUtils.getMachineIcon(machine.status)
 
     val containerColor by animateColorAsState(
         targetValue = statusColor.copy(alpha = 0.04f),
@@ -85,7 +68,7 @@ fun MachineCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Rounded.LocalLaundryService,
+                        imageVector = icon,
                         contentDescription = null,
                         modifier = Modifier.size(32.dp),
                         tint = statusColor
@@ -121,36 +104,14 @@ fun MachineCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
                 )
 
-                if (isWorking && machine.endTime != null) {
-                    val remaining = machine.endTime - currentTime
-                    if (remaining > 0) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Schedule,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = statusColor
-                            )
-                            Text(
-                                text = TimeUtils.formatRemainingTime(remaining),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = statusColor,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = "Cycle Complete",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF4CAF50),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
+                if (isWorking) {
+                    Text(
+                        text = "In Progress",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = statusColor,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
 
