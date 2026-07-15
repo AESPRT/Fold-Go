@@ -39,8 +39,7 @@ fun MachineDetailScreen(
         uiState = uiState,
         machine = machine,
         onNavigateBack = onNavigateBack,
-        onUpdateStatus = viewModel::updateStatus,
-        onStartCycle = viewModel::startCycle
+        onUpdateStatus = viewModel::updateStatus
     )
 }
 
@@ -50,8 +49,7 @@ fun MachineDetailContent(
     uiState: MachineUiState,
     machine: Machine?,
     onNavigateBack: () -> Unit,
-    onUpdateStatus: (String, MachineStatus) -> Unit,
-    onStartCycle: (String) -> Unit
+    onUpdateStatus: (String, MachineStatus) -> Unit
 ) {
     var showStatusDialog by remember { mutableStateOf(false) }
 
@@ -147,7 +145,7 @@ fun MachineDetailContent(
                     ) {
                         Icon(Icons.Rounded.Settings, null)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Update Status or Start Cycle", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text("Update Machine Status", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
 
                     OutlinedButton(
@@ -172,10 +170,6 @@ fun MachineDetailContent(
             onStatusChange = { status ->
                 onUpdateStatus(machine.machineId, status)
                 showStatusDialog = false
-            },
-            onStartCycle = { 
-                onStartCycle(machine.machineId)
-                showStatusDialog = false 
             }
         )
     }
@@ -198,8 +192,7 @@ fun MachineDetailContentPreview() {
                 cyclesCount = 42
             ),
             onNavigateBack = {},
-            onUpdateStatus = { _, _ -> },
-            onStartCycle = { _ -> }
+            onUpdateStatus = { _, _ -> }
         )
     }
 }

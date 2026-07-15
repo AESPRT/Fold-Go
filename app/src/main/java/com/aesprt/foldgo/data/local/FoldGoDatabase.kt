@@ -17,7 +17,7 @@ import com.aesprt.foldgo.data.local.entities.models.*
         ServiceEntity::class,
         OrderBatchEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -1,8 +1,8 @@
 package com.aesprt.foldgo.presentation.machines
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aesprt.foldgo.core.notification.NotificationHelper
 import com.aesprt.foldgo.core.util.IdGeneratorUtils
 import com.aesprt.foldgo.data.local.PreferenceManager
 import com.aesprt.foldgo.domain.model.*
@@ -14,30 +14,20 @@ import kotlinx.coroutines.launch
 data class MachineUiState(
     val machines: List<Machine> = emptyList(),
     val categories: List<MachineCategory> = emptyList(),
-    val activeOrders: List<OrderWithBatches> = emptyList(),
     val selectedMachine: Machine? = null,
     val selectedOrder: Order? = null,
     val isLoading: Boolean = false
 )
 
-data class OrderWithBatches(
-    val order: Order,
-    val batches: List<OrderBatch>? = null
-)
-
 class MachineViewModel(
     private val getMachinesUseCase: GetMachinesUseCase,
     private val getMachineCategoriesUseCase: GetMachineCategoriesUseCase,
-    getAllOrdersUseCase: GetAllOrdersUseCase,
+    private val getAllOrdersUseCase: GetAllOrdersUseCase,
     private val upsertOrderUseCase: UpsertOrderUseCase,
-    private val getOrderByIdUseCase: GetOrderByIdUseCase,
-    private val startMachineCycleUseCase: StartMachineCycleUseCase,
-    private val finishMachineCycleUseCase: FinishMachineCycleUseCase,
     private val updateMachineStatusUseCase: UpdateMachineStatusUseCase,
-    private val getBatchesByOrderIdUseCase: GetBatchesByOrderIdUseCase,
-    private val upsertOrderBatchUseCase: UpsertOrderBatchUseCase,
     private val addMachineUseCase: AddMachineUseCase,
     private val addMachineCategoryUseCase: AddMachineCategoryUseCase,
+    private val notificationHelper: NotificationHelper,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -54,21 +44,12 @@ class MachineViewModel(
         val filteredMachines = if (filter == null) machines else machines.filter { it.status == filter }
         val sortedMachines = filteredMachines.sortedBy { it.name }
 
-        val ordersWithBatches = orders.filter {
-            it.status != OrderStatus.READY && it.status != OrderStatus.DELIVERED
-        }.map { order ->
-            val batches = getBatchesByOrderIdUseCase(order.orderId).first()
-            val batchesDomain = batches.map { it }
-            OrderWithBatches(order, batchesDomain)
-        }
-
         val selectedMachine = machines.find { it.machineId == selectedId }
         val selectedOrder = orders.find { it.orderId == selectedMachine?.assignedOrderId }
 
         MachineUiState(
             machines = sortedMachines,
             categories = categories,
-            activeOrders = ordersWithBatches,
             selectedMachine = selectedMachine,
             selectedOrder = selectedOrder,
             isLoading = false
@@ -124,60 +105,52 @@ class MachineViewModel(
         }
     }
 
-    fun addCategory(name: String) {
-        viewModelScope.launch {
-            val category = MachineCategory(
-                categoryId = "cat_${System.currentTimeMillis()}",
-                name = name
-            )
-            addMachineCategoryUseCase(category)
-        }
-    }
-
     fun updateStatus(machineId: String, status: MachineStatus) {
         viewModelScope.launch {
+            val machine = getMachinesUseCase().first().find { it.machineId == machineId } ?: return@launch
+            val orderId = machine.assignedOrderId
+            
             updateMachineStatusUseCase(machineId, status.name)
-        }
-    }
 
-    fun startCycle(machineId: String) {
-        viewModelScope.launch {
-            // Find machine to get assignedOrderId
-            val machines = getMachinesUseCase().first()
-            val machine = machines.find { it.machineId == machineId } ?: return@launch
-            val orderId = machine.assignedOrderId ?: return@launch
-            
-            // Trigger domain logic
-            startMachineCycleUseCase(machineId, orderId, 30) // Default 30 mins for now
-            
-            // Update machine status to WASHING as per spec (first state in sequence)
-            updateMachineStatusUseCase(machineId, MachineStatus.WASHING.name)
-        }
-    }
-
-    fun finishCycle(machineId: String) {
-        viewModelScope.launch {
-            finishMachineCycleUseCase(machineId)
-        }
-    }
-
-    /**
-     * Determine order status when a batch is being started.
-     * Looks at the phases of all batches to determine what phase the order is in.
-     */
-    private fun determineBatchOrderStatus(order: Order, allBatches: List<OrderBatch>): OrderStatus {
-        if (allBatches.isEmpty()) return order.status
-
-        // Check what phases have active batches
-        val hasWashingBatches = allBatches.any { it.status == BatchStatus.WASHING }
-        val hasDryingBatches = allBatches.any { it.status == BatchStatus.DRYING }
-        val hasFoldingBatches = allBatches.any { it.status == BatchStatus.FOLDING }
-
-        return when {
-            hasWashingBatches -> OrderStatus.WASHING
-            hasDryingBatches -> OrderStatus.DRYING
-            hasFoldingBatches -> OrderStatus.FOLDING
-            else -> order.status
+            if (orderId != null) {
+                val order = getAllOrdersUseCase().first().find { it.orderId == orderId }
+                if (order != null) {
+                    val newOrderStatus = when (status) {
+                        MachineStatus.WASHING -> OrderStatus.WASHING
+                        MachineStatus.DRYING -> OrderStatus.DRYING
+                        MachineStatus.IRONING -> OrderStatus.IRONING
+                        MachineStatus.FOLDING -> OrderStatus.FOLDING
+                        MachineStatus.READY -> OrderStatus.READY
+                        else -> order.status
+                    }
+                    
+                    if (newOrderStatus != order.status) {
+                        upsertOrderUseCase(order.copy(
+                            status = newOrderStatus,
+                            updatedAt = System.currentTimeMillis()
+                        ))
+                        
+                        // Show notification for status completion/transition
+                        val statusLabel = when (status) {
+                            MachineStatus.WASHING -> "wash cycle"
+                            MachineStatus.DRYING -> "dry cycle"
+                            MachineStatus.IRONING -> "iron cycle"
+                            MachineStatus.FOLDING -> "folding"
+                            MachineStatus.READY -> "processing"
+                            else -> "cycle"
+                        }
+                        
+                        notificationHelper.showBatchCompletionNotification(
+                            machineName = machine.name,
+                            batchWeight = order.items.sumOf { it.quantity },
+                            batchStatus = statusLabel,
+                            orderNumber = order.orderNumber,
+                            batchId = orderId, // Using orderId since no batches
+                            orderId = orderId
+                        )
+                    }
+                }
+            }
         }
     }
 }

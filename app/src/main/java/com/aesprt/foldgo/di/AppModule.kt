@@ -88,7 +88,7 @@ val dataModule = module {
 
     single<ShopRepository> { ShopRepositoryImpl(get()) }
     single<OrderRepository> { OrderRepositoryImpl(get()) }
-    single<MachineRepository> { MachineRepositoryImpl(get(), get(), get()) }
+    single<MachineRepository> { MachineRepositoryImpl(get(), get()) }
     single<StaffRepository> { StaffRepositoryImpl(get()) }
     single<ServiceRepository> { ServiceRepositoryImpl(get()) }
 
@@ -145,11 +145,10 @@ val presentationModule = module {
     viewModel { OnboardingViewModel(get()) }
     viewModel { DashboardViewModel(get(), get(), get(), get()) }
     viewModel { HistoryViewModel(get()) }
-    viewModel { OrderEntryViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { OrderEntryViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { (orderId: String) ->
         OrderDetailViewModel(
             orderId,
-            get(),
             get(),
             get(),
             get(),
@@ -159,8 +158,7 @@ val presentationModule = module {
     }
     viewModel {
         MachineViewModel(
-            get(), get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
     viewModel { ShopRegistrationViewModel(get(), get(), get()) }
