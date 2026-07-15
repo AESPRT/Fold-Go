@@ -19,19 +19,29 @@ data class OrderEntryUiState(
     val phoneTextFieldValue: TextFieldValue = TextFieldValue(""),
     val customerAddress: String = "",
     val deliveryMethod: DeliveryMethod = DeliveryMethod.PICKUP,
+    val selectedServiceIds: Set<String> = emptySet(),
+    val weight: String = "5.0",
     val selectedItems: List<ServiceItem> = emptyList(),
     val availableServices: List<Service> = emptyList(),
+    val availableAddOns: List<AddOn> = emptyList(),
+    val selectedAddOns: List<AddOn> = emptyList(),
+    val availableMachines: List<Machine> = emptyList(),
+    val assignedMachine: Machine? = null,
     val isSaving: Boolean = false,
     val error: String? = null,
     val isSuccess: Boolean = false
 ) {
-    val totalAmount: Double get() = selectedItems.sumOf { it.totalPrice }
+    val servicesTotal: Double get() = selectedItems.sumOf { it.totalPrice }
+    val addOnsTotal: Double get() = selectedAddOns.sumOf { it.price }
+    val totalAmount: Double get() = servicesTotal + addOnsTotal
 }
 
 class OrderEntryViewModel(
     private val upsertOrderUseCase: UpsertOrderUseCase,
     private val getServicesUseCase: GetServicesUseCase,
     private val upsertServiceUseCase: UpsertServiceUseCase,
+    private val getMachinesUseCase: GetMachinesUseCase,
+    private val assignMachineToOrderUseCase: AssignMachineToOrderUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -40,6 +50,45 @@ class OrderEntryViewModel(
 
     init {
         loadServices()
+        loadMachines()
+        loadAddOns()
+    }
+
+    private fun loadMachines() {
+        viewModelScope.launch {
+            getMachinesUseCase().collect { machines ->
+                val available = machines.filter { it.status == MachineStatus.IDLE && it.assignedOrderId == null }
+                _uiState.update { it.copy(availableMachines = available) }
+            }
+        }
+    }
+
+    private fun loadAddOns() {
+        // Placeholder for loading add-ons from repository
+        _uiState.update { 
+            it.copy(
+                availableAddOns = listOf(
+                    AddOn("ao1", "Fabric Softener", "Adds softener to wash cycle", 30.0, ServiceScope.ALL, true),
+                    AddOn("ao2", "Extra Rinse", "One additional rinse cycle", 25.0, ServiceScope.WASH_ONLY, true),
+                    AddOn("ao3", "Express Service", "Ready in under 2 hours", 100.0, ServiceScope.ALL, true)
+                )
+            )
+        }
+    }
+
+    fun toggleAddOn(addOn: AddOn) {
+        _uiState.update { state ->
+            val newSelected = if (state.selectedAddOns.contains(addOn)) {
+                state.selectedAddOns - addOn
+            } else {
+                state.selectedAddOns + addOn
+            }
+            state.copy(selectedAddOns = newSelected)
+        }
+    }
+
+    fun assignMachine(machine: Machine) {
+        _uiState.update { it.copy(assignedMachine = machine) }
     }
 
     private fun loadServices() {
@@ -123,6 +172,43 @@ class OrderEntryViewModel(
         _uiState.update { it.copy(deliveryMethod = method) }
     }
 
+    fun toggleService(serviceId: String) {
+        _uiState.update { state ->
+            val isAlreadySelected = state.selectedServiceIds.contains(serviceId)
+            val newIds = if (isAlreadySelected) {
+                state.selectedServiceIds - serviceId
+            } else {
+                state.selectedServiceIds + serviceId
+            }
+            state.copy(selectedServiceIds = newIds)
+        }
+        updateSelectedItems()
+    }
+
+    fun onWeightChange(weight: String) {
+        _uiState.update { it.copy(weight = weight) }
+        updateSelectedItems()
+    }
+
+    private fun updateSelectedItems() {
+        _uiState.update { state ->
+            val weightDouble = state.weight.toDoubleOrNull() ?: 0.0
+            val newItems = state.availableServices
+                .filter { state.selectedServiceIds.contains(it.serviceId) }
+                .map { service ->
+                    ServiceItem(
+                        name = service.name,
+                        quantity = weightDouble,
+                        unit = service.unit,
+                        pricePerUnit = service.pricePerUnit,
+                        totalPrice = weightDouble * service.pricePerUnit,
+                        type = service.type
+                    )
+                }
+            state.copy(selectedItems = newItems)
+        }
+    }
+
     fun addItem(name: String, quantity: Double, unit: String, pricePerUnit: Double, type: ServiceType = ServiceType.WASH_DRY) {
         val newItem = ServiceItem(
             name = name,
@@ -141,8 +227,14 @@ class OrderEntryViewModel(
 
     fun saveOrder() {
         val currentState = _uiState.value
-        if (currentState.customerName.isBlank() || currentState.selectedItems.isEmpty()) {
-            _uiState.update { it.copy(error = "Please fill in all details") }
+        if (currentState.customerName.isBlank() || currentState.selectedItems.isEmpty() || currentState.assignedMachine == null) {
+            val errorMsg = when {
+                currentState.customerName.isBlank() -> "Customer name is required"
+                currentState.selectedItems.isEmpty() -> "Select at least one service item"
+                currentState.assignedMachine == null -> "Assign a machine to this order"
+                else -> "Please fill in all details"
+            }
+            _uiState.update { it.copy(error = errorMsg) }
             return
         }
 
@@ -159,9 +251,10 @@ class OrderEntryViewModel(
                 }
 
                 val dbPhoneNumber = currentState.phoneNumber.replace("+", "").ifBlank { "" }
+                val orderId = IdGeneratorUtils.generateOrderId()
 
                 val order = Order(
-                    orderId = IdGeneratorUtils.generateOrderId(),
+                    orderId = orderId,
                     shopId = shopId,
                     customerId = IdGeneratorUtils.generateCustomerId(),
                     customerName = currentState.customerName,
@@ -175,13 +268,20 @@ class OrderEntryViewModel(
                     deliveryMethod = currentState.deliveryMethod,
                     paymentStatus = PaymentStatus.PENDING,
                     intakePhotos = emptyList(),
-                    machineId = null,
+                    machineId = currentState.assignedMachine.machineId,
                     staffId = staffId,
                     staffName = staffName,
+                    selectedAddOns = currentState.selectedAddOns.map { 
+                        OrderAddOnSelection(orderId, it.id, it.price)
+                    },
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis()
                 )
                 upsertOrderUseCase(order)
+                
+                // Persist machine assignment
+                assignMachineToOrderUseCase(currentState.assignedMachine.machineId, orderId)
+
                 _uiState.update { it.copy(isSaving = false, isSuccess = true) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = e.message) }

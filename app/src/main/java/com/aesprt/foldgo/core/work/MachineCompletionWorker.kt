@@ -10,7 +10,7 @@ import com.aesprt.foldgo.data.local.entities.toDomain
 import com.aesprt.foldgo.data.local.entities.toEntity
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.OrderBatch
-import com.aesprt.foldgo.domain.model.enums.MachineType
+import com.aesprt.foldgo.domain.model.enums.BatchStatus
 import com.aesprt.foldgo.domain.model.enums.OrderStatus
 import com.aesprt.foldgo.domain.model.enums.ServiceType
 import com.aesprt.foldgo.presentation.machines.OrderWithBatches
@@ -71,19 +71,19 @@ class MachineCompletionWorker(
                     Log.e("adriel-testing", "activeBatch: ${activeBatch.status}")
 
                     // Handle Split Batch Completion
-                    val nextBatchStatus = when {
-                        activeBatchModel.status == OrderStatus.WASHING_AND_DRYING -> OrderStatus.WASHED_AND_DRIED
-                        activeBatchModel.status == OrderStatus.WASHING -> OrderStatus.WASHED
-                        activeBatchModel.status == OrderStatus.DRYING -> OrderStatus.DRIED
-                        activeBatchModel.status == OrderStatus.IRONING -> OrderStatus.IRONED
-                        else -> activeBatchModel.status
+                    val nextBatchStatus = when (activeBatchModel.status) {
+                        BatchStatus.QUEUED -> BatchStatus.WASHING
+                        BatchStatus.WASHING -> BatchStatus.DRYING
+                        BatchStatus.DRYING -> BatchStatus.FOLDING
+                        BatchStatus.FOLDING -> BatchStatus.READY
+                        BatchStatus.READY -> BatchStatus.READY
                     }
 
                     Log.e("adriel-testing", "nextBatchStatus: $nextBatchStatus")
 
                     val updatedBatch = activeBatchModel.copy(
                         status = nextBatchStatus,
-                        machineId = null
+                        machineId = if (nextBatchStatus == BatchStatus.FOLDING || nextBatchStatus == BatchStatus.READY) null else machine.machineId
                     )
 
                     database.orderBatchDao.upsertBatch(updatedBatch.toEntity())
@@ -94,16 +94,19 @@ class MachineCompletionWorker(
                     }
 
                     latestBatches = allBatchesDomain.map { if (it.batchId == updatedBatch.batchId) updatedBatch else it }
-                    currentProcessedStatus = nextBatchStatus
+                    
+                    // Map BatchStatus back to OrderStatus for order status logic
+                    currentProcessedStatus = when (nextBatchStatus) {
+                        BatchStatus.WASHING -> OrderStatus.WASHING
+                        BatchStatus.DRYING -> OrderStatus.DRYING
+                        BatchStatus.FOLDING -> OrderStatus.FOLDING
+                        BatchStatus.READY -> OrderStatus.READY
+                        else -> order.status
+                    }
                 } else {
                     batchId = null
                     // Handle Single Cycle (No Batch) Completion
-                    currentProcessedStatus = when (machine.type) {
-                        MachineType.WASHER_DRYER -> OrderStatus.WASHED_AND_DRIED
-                        MachineType.WASHER -> OrderStatus.WASHED
-                        MachineType.DRYER -> OrderStatus.DRIED
-                        else -> OrderStatus.IRONED
-                    }
+                    currentProcessedStatus = OrderStatus.WASHED
                 }
 
                 Log.e("adriel-testing", "currentProcessedStatus: $currentProcessedStatus")
@@ -188,19 +191,19 @@ class MachineCompletionWorker(
             
             val finishedWeight = when (item.type) {
                 ServiceType.WASH_DRY -> itemBatches.filter { 
-                    it.status in listOf(OrderStatus.WASHED_AND_DRIED, OrderStatus.IRONING, OrderStatus.IRONED, OrderStatus.FOLDING, OrderStatus.READY) 
+                    it.status == BatchStatus.READY 
                 }.sumOf { it.weightKg }
                 
                 ServiceType.WASH -> itemBatches.filter { 
-                    it.status in listOf(OrderStatus.WASHED, OrderStatus.IRONING, OrderStatus.IRONED, OrderStatus.FOLDING, OrderStatus.READY) 
+                    it.status == BatchStatus.READY 
                 }.sumOf { it.weightKg }
                 
                 ServiceType.DRY -> itemBatches.filter { 
-                    it.status in listOf(OrderStatus.DRIED, OrderStatus.IRONING, OrderStatus.IRONED, OrderStatus.FOLDING, OrderStatus.READY) 
+                    it.status == BatchStatus.READY 
                 }.sumOf { it.weightKg }
                 
                 ServiceType.IRON -> itemBatches.filter { 
-                    it.status in listOf(OrderStatus.IRONED, OrderStatus.FOLDING, OrderStatus.READY) 
+                    it.status == BatchStatus.READY 
                 }.sumOf { it.weightKg }
                 
                 else -> itemWeight // OTHER services don't need machine cycles
@@ -215,10 +218,9 @@ class MachineCompletionWorker(
         val activeStatuses = allBatches.map { it.status }.distinct()
         
         return when {
-            activeStatuses.contains(OrderStatus.WASHING_AND_DRYING) -> OrderStatus.WASHING_AND_DRYING
-            activeStatuses.contains(OrderStatus.WASHING) -> OrderStatus.WASHING
-            activeStatuses.contains(OrderStatus.DRYING) -> OrderStatus.DRYING
-            activeStatuses.contains(OrderStatus.IRONING) -> OrderStatus.IRONING
+            activeStatuses.contains(BatchStatus.WASHING) -> OrderStatus.WASHING
+            activeStatuses.contains(BatchStatus.DRYING) -> OrderStatus.DRYING
+            activeStatuses.contains(BatchStatus.FOLDING) -> OrderStatus.FOLDING
             // Fallback: If nothing is active but not complete, stay in the last processed state or INTAKE
             else -> lastFinishedStatus ?: OrderStatus.INTAKE
         }

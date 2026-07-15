@@ -14,15 +14,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.core.util.MachineUtils
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.enums.MachineStatus
-import com.aesprt.foldgo.domain.model.enums.MachineType
 import com.aesprt.foldgo.presentation.components.FoldGoEmptyState
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
+import com.aesprt.foldgo.core.util.DevicePreviews
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -129,8 +128,8 @@ fun EquipmentListItem(machine: Machine) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Machine Type Icon
-            val typeColor = MachineUtils.getMachineTypeColor(machine.type)
+            // Machine Icon
+            val typeColor = MaterialTheme.colorScheme.primary
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = RoundedCornerShape(16.dp),
@@ -138,7 +137,7 @@ fun EquipmentListItem(machine: Machine) {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = MachineUtils.getMachineIcon(machine.type),
+                        imageVector = MachineUtils.getMachineIcon(machine.status),
                         contentDescription = null,
                         tint = typeColor,
                         modifier = Modifier.size(24.dp)
@@ -154,22 +153,12 @@ fun EquipmentListItem(machine: Machine) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "${machine.capacityKg} kg",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "• ${machine.type.name.lowercase().replace("_", " ")}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "${machine.capacityKg} kg",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             // Status Indicator
@@ -189,15 +178,15 @@ fun EquipmentListItem(machine: Machine) {
     }
 }
 
-@Preview(showBackground = true)
+@DevicePreviews
 @Composable
 fun EquipmentSetupPreview() {
     FoldGoTheme {
         EquipmentSetupContent(
             uiState = MachineUiState(
                 machines = listOf(
-                    Machine("1", "shop1", "Washer 01", MachineType.WASHER, 8.0, MachineStatus.IDLE, 0L),
-                    Machine("2", "shop1", "Dryer 02", MachineType.DRYER, 10.0, MachineStatus.BUSY, 0L)
+                    Machine("1", "shop1", "Washer 01", 8.0, MachineStatus.IDLE, 0L),
+                    Machine("2", "shop1", "Dryer 02", 10.0, MachineStatus.WASHING, 0L)
                 )
             ),
             onNavigateBack = {},

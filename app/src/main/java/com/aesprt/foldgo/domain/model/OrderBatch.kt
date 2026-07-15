@@ -1,6 +1,6 @@
 package com.aesprt.foldgo.domain.model
 
-import com.aesprt.foldgo.domain.model.enums.OrderStatus
+import com.aesprt.foldgo.domain.model.enums.BatchStatus
 import com.aesprt.foldgo.domain.model.enums.ServiceType
 
 data class OrderBatch(
@@ -8,7 +8,7 @@ data class OrderBatch(
     val orderId: String,
     val machineId: String?,
     val weightKg: Double,
-    val status: OrderStatus,
+    val status: BatchStatus,
     val serviceType: ServiceType = ServiceType.WASH_DRY,
     val startTime: Long,
     val endTime: Long? = null

@@ -13,7 +13,7 @@ class SmsRepositoryImpl(
 
     override suspend fun sendSms(fromNumber: String, toNumber: String, message: String): Result<Unit> {
         return try {
-            val response = smsService.sendSms(apiKey, toNumber, message, "CommuTech")
+            val response = smsService.sendSms(apiKey, toNumber, message, "FoldGo")
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {

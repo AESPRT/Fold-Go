@@ -13,6 +13,7 @@ data class OrderDetailUiState(
     val order: Order? = null,
     val machine: Machine? = null,
     val allMachines: List<Machine> = emptyList(),
+    val availableAddOns: List<AddOn> = emptyList(),
     val batches: List<OrderBatch> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -36,6 +37,21 @@ class OrderDetailViewModel(
 
     init {
         loadOrderDetail()
+        loadAddOns()
+    }
+
+    private fun loadAddOns() {
+        // Placeholder for loading add-ons from repository
+        _uiState.update { 
+            it.copy(
+                availableAddOns = listOf(
+                    AddOn("ao1", "Fabric Softener", "Adds softener to wash cycle", 30.0, ServiceScope.ALL, true),
+                    AddOn("ao2", "Extra Rinse", "One additional rinse cycle", 25.0, ServiceScope.WASH_ONLY, true),
+                    AddOn("ao3", "Express Service", "Ready in under 2 hours", 100.0, ServiceScope.ALL, true),
+                    AddOn("ao4", "Stain Treatment", "Pre-treat visible stains", 50.0, ServiceScope.ALL, true)
+                )
+            )
+        }
     }
 
     private fun loadOrderDetail() {
@@ -45,16 +61,17 @@ class OrderDetailViewModel(
                 getMachinesUseCase(),
                 getBatchesByOrderIdUseCase(orderId)
             ) { order, machines, batches ->
-                val machine = machines.find { it.machineId == order?.machineId }
-                OrderDetailUiState(
-                    order = order,
-                    machine = machine,
-                    allMachines = machines,
-                    batches = batches,
-                    isLoading = false
-                )
-            }.collect { state ->
-                _uiState.value = state
+                val machine = machines.find { it.machineId == order?.machineId || it.assignedOrderId == order?.orderId }
+                Triple(order, machine, batches)
+            }.collect { (order, machine, batches) ->
+                _uiState.update { 
+                    it.copy(
+                        order = order,
+                        machine = machine,
+                        batches = batches,
+                        isLoading = false
+                    )
+                }
             }
         }
     }

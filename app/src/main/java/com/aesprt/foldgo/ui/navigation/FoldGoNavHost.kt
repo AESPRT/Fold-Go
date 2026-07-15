@@ -1,5 +1,6 @@
 package com.aesprt.foldgo.ui.navigation
 
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import com.aesprt.foldgo.presentation.settings.SettingsScreen
 import com.aesprt.foldgo.presentation.shop.ShopInfoScreen
 import com.aesprt.foldgo.presentation.shop.ShopRegistrationScreen
 import com.aesprt.foldgo.presentation.splash.SplashScreen
+import com.aesprt.foldgo.presentation.settings.AddOnsScreen
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -84,9 +86,13 @@ object NotificationsRoute
 @Serializable
 object AppearanceRoute
 
+@Serializable
+object AddOnsRoute
+
 @Composable
 fun FoldGoNavHost(
     navController: NavHostController,
+    widthSizeClass: WindowWidthSizeClass,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues()
 ) {
@@ -176,6 +182,7 @@ fun FoldGoNavHost(
                 onNewOrderClick = {
                     navController.navigate(NewOrderRoute)
                 },
+                widthSizeClass = widthSizeClass,
                 contentPadding = contentPadding
             )
         }
@@ -243,6 +250,9 @@ fun FoldGoNavHost(
                 onNavigateToAppearance = {
                     navController.navigate(AppearanceRoute)
                 },
+                onNavigateToAddOns = {
+                    navController.navigate(AddOnsRoute)
+                },
                 contentPadding = contentPadding
             )
         }
@@ -280,6 +290,12 @@ fun FoldGoNavHost(
 
         composable<AppearanceRoute> {
             AppearanceScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<AddOnsRoute> {
+            AddOnsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

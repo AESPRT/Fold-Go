@@ -10,6 +10,7 @@ interface MachineRepository {
     suspend fun updateMachineStatus(machineId: String, status: String)
     suspend fun startMachineCycle(machineId: String, orderId: String, durationMinutes: Int)
     suspend fun finishMachineCycle(machineId: String)
+    suspend fun assignOrder(machineId: String, orderId: String?)
     
     fun getAllCategories(): Flow<List<MachineCategory>>
     suspend fun upsertCategory(category: MachineCategory)

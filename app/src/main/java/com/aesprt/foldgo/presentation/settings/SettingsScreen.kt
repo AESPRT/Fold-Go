@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.components.FoldGoLogo
+import com.aesprt.foldgo.core.util.DevicePreviews
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import com.aesprt.foldgo.ui.theme.DeepOceanBlue
 import com.aesprt.foldgo.ui.theme.MintGreen
@@ -38,6 +39,7 @@ fun SettingsScreen(
     onNavigateToSMS: (() -> Unit)? = null,
     onNavigateToNotifications: (() -> Unit)? = null,
     onNavigateToAppearance: (() -> Unit)? = null,
+    onNavigateToAddOns: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: SettingsViewModel = koinViewModel()
 ) {
@@ -55,6 +57,7 @@ fun SettingsScreen(
         onNavigateToSMS = onNavigateToSMS,
         onNavigateToNotifications = onNavigateToNotifications,
         onNavigateToAppearance = onNavigateToAppearance,
+        onNavigateToAddOns = onNavigateToAddOns,
         contentPadding = contentPadding
     )
 }
@@ -71,6 +74,7 @@ private fun SettingsContent(
     onNavigateToSMS: (() -> Unit)? = null,
     onNavigateToNotifications: (() -> Unit)? = null,
     onNavigateToAppearance: (() -> Unit)? = null,
+    onNavigateToAddOns: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -150,6 +154,15 @@ private fun SettingsContent(
                             subtitle = "Prices, categories, and items",
                             onClick = {
                                 onNavigateToServices?.invoke() ?: onFeatureNotAvailable("Laundry Services")
+                            }
+                        )
+                        SettingsItem(
+                            icon = Icons.Rounded.AddCircle,
+                            iconColor = DeepOceanBlue,
+                            title = "Service Add-Ons",
+                            subtitle = "Manage extra services and pricing",
+                            onClick = { 
+                                onNavigateToAddOns?.invoke() ?: onFeatureNotAvailable("Service Add-Ons")
                             }
                         )
                         SettingsItem(
@@ -479,7 +492,7 @@ fun SettingsItem(
     }
 }
 
-@Preview(showBackground = true)
+@DevicePreviews
 @Composable
 fun SettingsScreenPreview() {
     FoldGoTheme {

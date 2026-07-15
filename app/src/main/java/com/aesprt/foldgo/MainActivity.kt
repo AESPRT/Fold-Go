@@ -10,8 +10,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +24,7 @@ import com.aesprt.foldgo.presentation.components.FoldGoBottomBar
 import com.aesprt.foldgo.ui.navigation.*
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import com.aesprt.foldgo.data.local.PreferenceManager
+import com.aesprt.foldgo.presentation.components.TabletScaffold
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.android.ext.android.inject
 
@@ -42,6 +45,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -64,6 +68,9 @@ class MainActivity : ComponentActivity() {
             val isDarkMode by preferenceManager.isDarkModeEnabled.collectAsState(initial = false)
 
             FoldGoTheme(darkTheme = isDarkMode) {
+                val windowSizeClass = calculateWindowSizeClass(this)
+                val isTablet = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination?.route
@@ -88,36 +95,59 @@ class MainActivity : ComponentActivity() {
                     SettingsRoute::class.qualifiedName
                 )
                 
-                val showBottomBar = currentDestination != null && menuRoutes.any { 
+                val showNavBars = currentDestination != null && menuRoutes.any { 
                     currentDestination.contains(it ?: "") 
                 }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    containerColor = Color.Transparent,
-                    bottomBar = {
-                        if (showBottomBar) {
-                            FoldGoBottomBar(
-                                currentRoute = currentDestination,
-                                onNavigate = { route ->
-                                    navController.navigate(route) {
-                                        popUpTo(navController.graph.startDestinationId) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                if (isTablet && showNavBars) {
+                    TabletScaffold(
+                        currentRoute = currentDestination,
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
                                 }
-                            )
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
+                    ) { innerPadding ->
+                        FoldGoNavHost(
+                            navController = navController,
+                            widthSizeClass = windowSizeClass.widthSizeClass,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = innerPadding
+                        )
                     }
-                ) { innerPadding ->
-                    // Pass innerPadding to NavHost so screens can respect bottom bar height
-                    FoldGoNavHost(
-                        navController = navController,
+                } else {
+                    Scaffold(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = innerPadding
-                    )
+                        containerColor = Color.Transparent,
+                        bottomBar = {
+                            if (showNavBars) {
+                                FoldGoBottomBar(
+                                    currentRoute = currentDestination,
+                                    onNavigate = { route ->
+                                        navController.navigate(route) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    ) { innerPadding ->
+                        // Pass innerPadding to NavHost so screens can respect bottom bar height
+                        FoldGoNavHost(
+                            navController = navController,
+                            widthSizeClass = windowSizeClass.widthSizeClass,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = innerPadding
+                        )
+                    }
                 }
             }
         }

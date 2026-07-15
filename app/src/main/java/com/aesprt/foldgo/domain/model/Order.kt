@@ -23,6 +23,7 @@ data class Order(
     val machineId: String?,
     val staffId: String,
     val staffName: String,
+    val selectedAddOns: List<OrderAddOnSelection> = emptyList(),
     val createdAt: Long,
     val updatedAt: Long
 )

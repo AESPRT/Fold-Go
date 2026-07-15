@@ -8,22 +8,22 @@ fun MachineEntity.toDomain() = Machine(
     machineId = machineId,
     shopId = shopId,
     name = name,
-    type = type,
     capacityKg = capacityKg,
     status = status,
     lastMaintenanceDate = lastMaintenanceDate,
     endTime = endTime,
-    cyclesCount = cyclesCount
+    cyclesCount = cyclesCount,
+    assignedOrderId = assignedOrderId
 )
 
 fun Machine.toEntity() = MachineEntity(
     machineId = machineId,
     shopId = shopId,
     name = name,
-    type = type,
     capacityKg = capacityKg,
     status = status,
     lastMaintenanceDate = lastMaintenanceDate,
     endTime = endTime,
-    cyclesCount = cyclesCount
+    cyclesCount = cyclesCount,
+    assignedOrderId = assignedOrderId
 )

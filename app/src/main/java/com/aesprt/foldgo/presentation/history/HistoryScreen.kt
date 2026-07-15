@@ -22,6 +22,7 @@ import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.FoldGoLogo
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.components.OrderCard
+import com.aesprt.foldgo.core.util.DevicePreviews
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -107,7 +108,7 @@ fun HistoryContent(
     }
 }
 
-@Preview(showBackground = true)
+@DevicePreviews
 @Composable
 fun HistoryContentPreview() {
     FoldGoTheme {
@@ -129,6 +130,7 @@ fun HistoryContentPreview() {
                         machineId = null,
                         staffId = "staff1",
                         staffName = "Operator 1",
+                        selectedAddOns = emptyList(),
                         createdAt = System.currentTimeMillis(),
                         updatedAt = System.currentTimeMillis()
                     )
