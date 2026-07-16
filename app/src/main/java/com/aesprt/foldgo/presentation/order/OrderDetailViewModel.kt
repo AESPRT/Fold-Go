@@ -93,7 +93,7 @@ class OrderDetailViewModel(
 
             // Send SMS
             if (currentOrder.customerPhone.isNotBlank()) {
-                val message = "FoldGo JO#${currentOrder.orderNumber}\nStatus: QUEUED\nAssigned to ${uiState.value.availableMachines.find { it.machineId == machineId }?.name ?: "a machine"}. We will text you again once ready."
+                val message = "FoldGo ${currentOrder.orderNumber}\nStatus: QUEUED\nAssigned to ${uiState.value.availableMachines.find { it.machineId == machineId }?.name ?: "a machine"}. We will text you again once ready."
                 sendSmsUseCase(currentOrder.customerPhone, message, currentOrder.orderId)
             }
         }
@@ -148,7 +148,6 @@ class OrderDetailViewModel(
             _uiState.update { it.copy(isSendingSms = true) }
             val result = sendSmsUseCase(order.customerPhone, message, order.orderId)
             if (result.isSuccess) {
-                preferenceManager.deductSmsCredit() // Deducted in repository now
                 completePendingUpdate()
             } else {
                 _uiState.update { it.copy(isSendingSms = false, error = "Failed to send SMS: ${result.exceptionOrNull()?.message}") }
@@ -161,14 +160,6 @@ class OrderDetailViewModel(
         viewModelScope.launch {
             upsertOrderUseCase(orderToSave)
             _uiState.update { it.copy(pendingOrder = null, showSmsPrompt = false, isSendingSms = false) }
-        }
-    }
-
-    fun dismissSmsPrompt() {
-        if (uiState.value.pendingOrder != null) {
-            completePendingUpdate()
-        } else {
-            _uiState.update { it.copy(showSmsPrompt = false) }
         }
     }
 }

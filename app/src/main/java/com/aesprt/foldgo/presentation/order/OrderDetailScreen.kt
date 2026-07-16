@@ -61,7 +61,7 @@ fun OrderDetailScreen(
                     .fillMaxSize()
                     .imePadding()
             ) {
-                if (uiState.isLoading) {
+                if (uiState.isLoading || uiState.isSendingSms) {
                     FoldGoLoading(modifier = Modifier.align(Alignment.Center))
                 } else if (uiState.order != null) {
                     if (isTablet) {
@@ -99,7 +99,7 @@ fun OrderDetailScreen(
                         order.deliveryMethod == DeliveryMethod.PICKUP -> "READY FOR PICKUP"
                         else -> "READY FOR DELIVERY"
                     }
-                    val message = "FoldGo JO#${order.orderNumber}\nAmount: P${order.totalAmount}\nStatus: $isPickupLabel\nPlease bring your claim stub to claim. Thank you!"
+                    val message = "FoldGo ${order.orderNumber}\nAmount: P${order.totalAmount}\nStatus: $isPickupLabel\nPlease bring your claim stub to claim. Thank you!"
                     viewModel.sendSmsAndComplete(message)
                 }
             }

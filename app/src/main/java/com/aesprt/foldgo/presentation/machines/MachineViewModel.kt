@@ -109,6 +109,8 @@ class MachineViewModel(
         viewModelScope.launch {
             val machine = getMachinesUseCase().first().find { it.machineId == machineId } ?: return@launch
             val orderId = machine.assignedOrderId
+
+            val isSmsEnabled = preferenceManager.isSmsEnabled.first()
             
             if (status == MachineStatus.READY) {
                 if (orderId != null) {
@@ -119,8 +121,8 @@ class MachineViewModel(
                             updatedAt = System.currentTimeMillis()
                         ))
                         
-                        if (order.customerPhone.isNotBlank()) {
-                            val message = "FoldGo JO#${order.orderNumber}\nStatus: READY FOR PICKUP\nPlease collect your laundry. Thank you!"
+                        if (order.customerPhone.isNotBlank() && isSmsEnabled) {
+                            val message = "FoldGo ${order.orderNumber}\nStatus: READY FOR PICKUP\nPlease collect your laundry. Thank you!"
                             sendSmsUseCase(order.customerPhone, message, orderId)
                         }
                     }
@@ -141,13 +143,13 @@ class MachineViewModel(
                             MachineStatus.FOLDING -> OrderStatus.FOLDING
                             else -> order.status
                         }
-                        
+
                         if (newOrderStatus != order.status) {
                             upsertOrderUseCase(order.copy(
                                 status = newOrderStatus,
                                 updatedAt = System.currentTimeMillis()
                             ))
-                            
+
                             if (order.customerPhone.isNotBlank()) {
                                 val statusText = when (status) {
                                     MachineStatus.WASHING -> "WASHING"
@@ -156,8 +158,8 @@ class MachineViewModel(
                                     MachineStatus.FOLDING -> "FOLDING"
                                     else -> status.name
                                 }
-                                val message = "FoldGo JO#${order.orderNumber}\nStatus: $statusText\nWe will text you again once ready."
-                                sendSmsUseCase(order.customerPhone, message, orderId)
+                                val message = "FoldGo ${order.orderNumber}\nStatus: $statusText\nWe will text you again once ready."
+                                sendSmsUseCase(order.customerPhone, message, order.orderId)
                             }
                         }
                     }

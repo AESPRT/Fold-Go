@@ -35,7 +35,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import org.koin.core.qualifier.named
 
 val dataModule = module {
-    single { PreferenceManager(androidContext(), get()) }
+    single { PreferenceManager(androidContext(), get(), get()) }
     single { NotificationHelper(androidContext(), get()) }
     single { WorkManager.getInstance(androidContext()) }
 

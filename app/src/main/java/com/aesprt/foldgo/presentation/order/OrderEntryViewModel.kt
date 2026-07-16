@@ -312,7 +312,7 @@ class OrderEntryViewModel(
                 // Send Confirmation SMS
                 if (order.customerPhone.isNotBlank()) {
                     val statusText = if (order.status == OrderStatus.QUEUED) "QUEUED" else "PENDING (Waiting for Machine)"
-                    val message = "FoldGo JO#${order.orderNumber}\nAmt: P${order.totalAmount}\nStatus: $statusText\nWe will text you once your laundry is ready."
+                    val message = "FoldGo ${order.orderNumber}\nAmt: P${order.totalAmount}\nStatus: $statusText\nWe will text you once your laundry is ready."
                     sendSmsUseCase(order.customerPhone, message, order.orderId)
                 }
 
