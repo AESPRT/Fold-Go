@@ -24,6 +24,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SMSSettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToPlanSelection: () -> Unit,
     viewModel: PreferencesViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -31,7 +32,7 @@ fun SMSSettingsScreen(
     SMSSettingsContent(
         uiState = uiState,
         onToggleSms = viewModel::toggleSms,
-        onBuyCredits = viewModel::buyCredits,
+        onBuyCredits = onNavigateToPlanSelection,
         onNavigateBack = onNavigateBack
     )
 }
@@ -103,6 +104,22 @@ private fun SMSSettingsContent(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                if (uiState.planName != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            uiState.planName.uppercase(),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 Text(
                     "Remaining Balance",
                     style = MaterialTheme.typography.labelLarge,
@@ -128,6 +145,15 @@ private fun SMSSettingsContent(
                     )
                 }
 
+                if (uiState.billingCycleEnd != null) {
+                    val date = java.text.DateFormat.getDateInstance().format(java.util.Date(uiState.billingCycleEnd))
+                    Text(
+                        "Resets on $date",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
@@ -141,7 +167,7 @@ private fun SMSSettingsContent(
                 ) {
                     Icon(Icons.Rounded.Add, null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Refill Credits", fontWeight = FontWeight.Bold)
+                    Text(if (uiState.planName == null) "Choose a Plan" else "Change Plan", fontWeight = FontWeight.Bold)
                 }
             }
         }

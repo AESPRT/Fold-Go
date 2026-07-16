@@ -17,6 +17,7 @@ data class OrderEntity(
     val orderNumber: String,
     val itemsJson: String,
     val totalAmount: Double,
+    val deliveryFee: Double = 0.0,
     val paidAmount: Double,
     val changeDue: Double,
     val status: OrderStatus,

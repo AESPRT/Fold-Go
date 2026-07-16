@@ -2,9 +2,6 @@ package com.aesprt.foldgo.data.local.entities
 
 import com.aesprt.foldgo.data.local.entities.models.*
 import com.aesprt.foldgo.domain.model.*
-import com.aesprt.foldgo.domain.model.enums.*
-import com.aesprt.foldgo.domain.model.enums.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 fun OrderBatchEntity.toDomain() = OrderBatch(
@@ -32,7 +29,7 @@ fun OrderBatch.toEntity() = OrderBatchEntity(
 fun ShopEntity.toDomain(): Shop {
     val settingsMap = try {
         Json.decodeFromString<Map<String, String>>(settings)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptyMap()
     }
     return Shop(
@@ -127,12 +124,12 @@ fun Service.toEntity(): ServiceEntity {
 fun OrderEntity.toDomain(): Order {
     val items = try {
         Json.decodeFromString<List<ServiceItem>>(itemsJson)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptyList()
     }
     val photos = try {
         intakePhotosJson?.let { Json.decodeFromString<List<String>>(it) } ?: emptyList()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptyList()
     }
 
@@ -146,6 +143,7 @@ fun OrderEntity.toDomain(): Order {
         orderNumber = orderNumber,
         items = items,
         totalAmount = totalAmount,
+        deliveryFee = deliveryFee,
         paidAmount = paidAmount,
         changeDue = changeDue,
         status = status,
@@ -171,6 +169,7 @@ fun Order.toEntity(isSynced: Boolean = false): OrderEntity {
         orderNumber = orderNumber,
         itemsJson = Json.encodeToString(items),
         totalAmount = totalAmount,
+        deliveryFee = deliveryFee,
         paidAmount = paidAmount,
         changeDue = changeDue,
         status = status,

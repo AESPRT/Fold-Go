@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.core.util.DevicePreviews
 import com.aesprt.foldgo.core.util.PriceFormatter
 import com.aesprt.foldgo.presentation.components.*
-import com.aesprt.foldgo.presentation.order.OrderDetailContent
+import com.aesprt.foldgo.presentation.order.OrderDetailScreen
 import com.aesprt.foldgo.presentation.order.OrderDetailViewModel
 import com.aesprt.foldgo.ui.navigation.DashboardRoute
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
@@ -122,7 +122,7 @@ fun DashboardContent(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         SummaryCard(
-                            title = "Total Intake",
+                            title = "Total Queued",
                             value = PriceFormatter.format(uiState.totalIntakeAmount),
                             icon = Icons.Rounded.Payments,
                             iconColor = Color(0xFF4CAF50),
@@ -256,7 +256,7 @@ fun DashboardTabletContent(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SummaryCard(
-                    title = "Total Intake",
+                    title = "Total Queued",
                     value = PriceFormatter.format(uiState.totalIntakeAmount),
                     icon = Icons.Rounded.Payments,
                     iconColor = Color(0xFF4CAF50),
@@ -349,14 +349,7 @@ fun DashboardTabletContent(
                                 FoldGoLoading()
                             }
                         } else if (detailUiState.order != null) {
-                            OrderDetailContent(
-                                order = detailUiState.order!!,
-                                machine = detailUiState.machine,
-                                availableAddOns = detailUiState.availableAddOns,
-                                onReady = detailViewModel::updateOrderPaymentAndDelivery,
-                                onOrderStatusClick = detailViewModel::updateOrderStatus,
-                                onDelivered = detailViewModel::markAsDelivered
-                            )
+                            OrderDetailScreen(orderId = detailUiState.order?.orderId ?: "", onNavigateBack = {})
                         }
                     } else {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

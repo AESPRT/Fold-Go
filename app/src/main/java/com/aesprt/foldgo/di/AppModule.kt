@@ -58,18 +58,7 @@ val dataModule = module {
             .build()
     }
 
-    // Retrofit for HttpSMS (New)
-    /*single(named("HttpSmsRetrofit")) {
-        val json = Json { ignoreUnknownKeys = true }
-        Retrofit.Builder()
-            .baseUrl("https://api.httpsms.com/v1/")
-            .client(get())
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-    }*/
-
     single<SmsService> { get<Retrofit>(named("SemaphoreRetrofit")).create(SmsService::class.java) }
-    /*single<HttpSmsService> { get<Retrofit>(named("HttpSmsRetrofit")).create(HttpSmsService::class.java) }*/
 
     single<FoldGoDatabase> {
         Room.databaseBuilder(
@@ -85,17 +74,20 @@ val dataModule = module {
     single { get<FoldGoDatabase>().machineCategoryDao }
     single { get<FoldGoDatabase>().serviceDao }
     single { get<FoldGoDatabase>().orderBatchDao }
+    single { get<FoldGoDatabase>().smsDao }
+    single { get<FoldGoDatabase>().customerDao }
 
     single<ShopRepository> { ShopRepositoryImpl(get()) }
     single<OrderRepository> { OrderRepositoryImpl(get()) }
     single<MachineRepository> { MachineRepositoryImpl(get(), get()) }
     single<StaffRepository> { StaffRepositoryImpl(get()) }
     single<ServiceRepository> { ServiceRepositoryImpl(get()) }
+    single<CustomerRepository> { CustomerRepositoryImpl(get()) }
 
     // Switch between Semaphore and HttpSMS here
     // Currently set to HttpSMS
     /*single<SmsRepository> { HttpSmsRepositoryImpl(get()) }*/
-    single<SmsRepository> { SmsRepositoryImpl(get()) } // Semaphore implementation
+    single<SmsRepository> { SmsRepositoryImpl(get(), get(), get()) } // Semaphore implementation
 
     single<OrderBatchRepository> { OrderBatchRepositoryImpl(get()) }
 }
@@ -121,6 +113,9 @@ val domainModule = module {
     factory { GetServicesUseCase(get()) }
     factory { UpsertServiceUseCase(get()) }
     factory { SendSmsUseCase(get()) }
+    factory { GetSubscriptionUseCase(get()) }
+    factory { UpdateSubscriptionUseCase(get()) }
+    factory { GetSmsLogsUseCase(get()) }
 
     // Batch UseCases
     factory { GetBatchesByOrderIdUseCase(get()) }
@@ -138,14 +133,21 @@ val domainModule = module {
     factory { GetShopByIdUseCase(get()) }
     factory { UpsertShopUseCase(get()) }
     factory { HasShopUseCase(get()) }
+
+    // Customer UseCases
+    factory { GetAllCustomersUseCase(get()) }
+    factory { SearchCustomersUseCase(get()) }
+    factory { GetCustomerByIdUseCase(get()) }
+    factory { UpsertCustomerUseCase(get()) }
+    factory { DeleteCustomerUseCase(get()) }
 }
 
 val presentationModule = module {
     viewModel { SplashViewModel(get(), get()) }
     viewModel { OnboardingViewModel(get()) }
-    viewModel { DashboardViewModel(get(), get(), get(), get()) }
+    viewModel { DashboardViewModel(get(), get()) }
     viewModel { HistoryViewModel(get()) }
-    viewModel { OrderEntryViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { OrderEntryViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { (orderId: String) ->
         OrderDetailViewModel(
             orderId,
@@ -153,12 +155,14 @@ val presentationModule = module {
             get(),
             get(),
             get(),
+            get(),
+             get(),
             get()
         )
     }
     viewModel {
         MachineViewModel(
-            get(), get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
     viewModel { ShopRegistrationViewModel(get(), get(), get()) }
@@ -167,7 +171,7 @@ val presentationModule = module {
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { ShopInfoViewModel(get(), get()) }
     viewModel { ServicesViewModel(get(), get()) }
-    viewModel { PreferencesViewModel(get()) }
+    viewModel { PreferencesViewModel(get(), get(), get()) }
 }
 
 val appModule = module {

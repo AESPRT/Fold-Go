@@ -3,19 +3,26 @@ package com.aesprt.foldgo.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.data.local.PreferenceManager
+import com.aesprt.foldgo.domain.model.SmsSubscription
+import com.aesprt.foldgo.domain.usecase.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class PreferencesUiState(
     val isSmsEnabled: Boolean = true,
     val isNotificationsEnabled: Boolean = true,
     val isDarkModeEnabled: Boolean = false,
     val smsCredits: Int = 0,
+    val planName: String? = null,
+    val billingCycleEnd: Long? = null,
     val error: String? = null
 )
 
 class PreferencesViewModel(
-    private val preferenceManager: PreferenceManager
+    private val preferenceManager: PreferenceManager,
+    private val getSubscriptionUseCase: GetSubscriptionUseCase,
+    private val updateSubscriptionUseCase: UpdateSubscriptionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PreferencesUiState())
@@ -27,13 +34,15 @@ class PreferencesViewModel(
                 preferenceManager.isSmsEnabled,
                 preferenceManager.isNotificationsEnabled,
                 preferenceManager.isDarkModeEnabled,
-                preferenceManager.smsCredits
-            ) { sms, notifications, darkMode, credits ->
+                getSubscriptionUseCase()
+            ) { sms, notifications, darkMode, subscription ->
                 PreferencesUiState(
                     isSmsEnabled = sms,
                     isNotificationsEnabled = notifications,
                     isDarkModeEnabled = darkMode,
-                    smsCredits = credits
+                    smsCredits = subscription?.remainingSms ?: 0,
+                    planName = subscription?.planName,
+                    billingCycleEnd = subscription?.billingCycleEnd
                 )
             }.collect { newState ->
                 _uiState.value = newState
@@ -45,7 +54,6 @@ class PreferencesViewModel(
         viewModelScope.launch {
             if (enabled && _uiState.value.smsCredits <= 0) {
                 _uiState.update { it.copy(error = "Insufficient SMS credits. Please buy credits to enable alerts.") }
-                // Ensure it stays disabled if no credits
                 preferenceManager.setSmsEnabled(false)
             } else {
                 preferenceManager.setSmsEnabled(enabled)
@@ -54,13 +62,32 @@ class PreferencesViewModel(
         }
     }
 
-    fun buyCredits() {
+    fun selectPlan(planName: String, smsCount: Int) {
         viewModelScope.launch {
-            // Mocking buying credits - adding 50 credits
-            val current = _uiState.value.smsCredits
-            preferenceManager.setSmsCredits(current + 50)
+            val shopId = preferenceManager.currentShopId.first() ?: return@launch
+            
+            val calendar = Calendar.getInstance()
+            val startTime = calendar.timeInMillis
+            calendar.add(Calendar.MONTH, 1)
+            val endTime = calendar.timeInMillis
+            
+            val newSubscription = SmsSubscription(
+                shopId = shopId,
+                planName = planName,
+                allocatedSms = smsCount,
+                usedSms = 0,
+                billingCycleStart = startTime,
+                billingCycleEnd = endTime,
+                isActive = true
+            )
+            
+            updateSubscriptionUseCase(newSubscription)
             _uiState.update { it.copy(error = null) }
         }
+    }
+
+    fun buyCredits() {
+        // This will now lead to plan selection
     }
 
     fun toggleNotifications(enabled: Boolean) {

@@ -10,5 +10,5 @@ data class ServiceItem(
     val unit: String,
     val pricePerUnit: Double,
     val totalPrice: Double,
-    val type: ServiceType = ServiceType.WASH_DRY
+    val type: ServiceType = ServiceType.PER_KG
 )

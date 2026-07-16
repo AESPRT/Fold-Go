@@ -2,7 +2,6 @@ package com.aesprt.foldgo.presentation.machines
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aesprt.foldgo.core.notification.NotificationHelper
 import com.aesprt.foldgo.core.util.IdGeneratorUtils
 import com.aesprt.foldgo.data.local.PreferenceManager
 import com.aesprt.foldgo.domain.model.*
@@ -25,9 +24,10 @@ class MachineViewModel(
     private val getAllOrdersUseCase: GetAllOrdersUseCase,
     private val upsertOrderUseCase: UpsertOrderUseCase,
     private val updateMachineStatusUseCase: UpdateMachineStatusUseCase,
+    private val assignMachineToOrderUseCase: AssignMachineToOrderUseCase,
+    private val sendSmsUseCase: SendSmsUseCase,
     private val addMachineUseCase: AddMachineUseCase,
     private val addMachineCategoryUseCase: AddMachineCategoryUseCase,
-    private val notificationHelper: NotificationHelper,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -110,44 +110,56 @@ class MachineViewModel(
             val machine = getMachinesUseCase().first().find { it.machineId == machineId } ?: return@launch
             val orderId = machine.assignedOrderId
             
-            updateMachineStatusUseCase(machineId, status.name)
-
-            if (orderId != null) {
-                val order = getAllOrdersUseCase().first().find { it.orderId == orderId }
-                if (order != null) {
-                    val newOrderStatus = when (status) {
-                        MachineStatus.WASHING -> OrderStatus.WASHING
-                        MachineStatus.DRYING -> OrderStatus.DRYING
-                        MachineStatus.IRONING -> OrderStatus.IRONING
-                        MachineStatus.FOLDING -> OrderStatus.FOLDING
-                        MachineStatus.READY -> OrderStatus.READY
-                        else -> order.status
-                    }
-                    
-                    if (newOrderStatus != order.status) {
+            if (status == MachineStatus.READY) {
+                if (orderId != null) {
+                    val order = getAllOrdersUseCase().first().find { it.orderId == orderId }
+                    if (order != null) {
                         upsertOrderUseCase(order.copy(
-                            status = newOrderStatus,
+                            status = OrderStatus.READY,
                             updatedAt = System.currentTimeMillis()
                         ))
                         
-                        // Show notification for status completion/transition
-                        val statusLabel = when (status) {
-                            MachineStatus.WASHING -> "wash cycle"
-                            MachineStatus.DRYING -> "dry cycle"
-                            MachineStatus.IRONING -> "iron cycle"
-                            MachineStatus.FOLDING -> "folding"
-                            MachineStatus.READY -> "processing"
-                            else -> "cycle"
+                        if (order.customerPhone.isNotBlank()) {
+                            val message = "FoldGo JO#${order.orderNumber}\nStatus: READY FOR PICKUP\nPlease collect your laundry. Thank you!"
+                            sendSmsUseCase(order.customerPhone, message, orderId)
+                        }
+                    }
+                }
+                // Clear assignment and set machine to IDLE
+                assignMachineToOrderUseCase(machineId, null)
+                updateMachineStatusUseCase(machineId, MachineStatus.IDLE.name)
+            } else {
+                updateMachineStatusUseCase(machineId, status.name)
+
+                if (orderId != null) {
+                    val order = getAllOrdersUseCase().first().find { it.orderId == orderId }
+                    if (order != null) {
+                        val newOrderStatus = when (status) {
+                            MachineStatus.WASHING -> OrderStatus.WASHING
+                            MachineStatus.DRYING -> OrderStatus.DRYING
+                            MachineStatus.IRONING -> OrderStatus.IRONING
+                            MachineStatus.FOLDING -> OrderStatus.FOLDING
+                            else -> order.status
                         }
                         
-                        notificationHelper.showBatchCompletionNotification(
-                            machineName = machine.name,
-                            batchWeight = order.items.sumOf { it.quantity },
-                            batchStatus = statusLabel,
-                            orderNumber = order.orderNumber,
-                            batchId = orderId, // Using orderId since no batches
-                            orderId = orderId
-                        )
+                        if (newOrderStatus != order.status) {
+                            upsertOrderUseCase(order.copy(
+                                status = newOrderStatus,
+                                updatedAt = System.currentTimeMillis()
+                            ))
+                            
+                            if (order.customerPhone.isNotBlank()) {
+                                val statusText = when (status) {
+                                    MachineStatus.WASHING -> "WASHING"
+                                    MachineStatus.DRYING -> "DRYING"
+                                    MachineStatus.IRONING -> "IRONING"
+                                    MachineStatus.FOLDING -> "FOLDING"
+                                    else -> status.name
+                                }
+                                val message = "FoldGo JO#${order.orderNumber}\nStatus: $statusText\nWe will text you again once ready."
+                                sendSmsUseCase(order.customerPhone, message, orderId)
+                            }
+                        }
                     }
                 }
             }

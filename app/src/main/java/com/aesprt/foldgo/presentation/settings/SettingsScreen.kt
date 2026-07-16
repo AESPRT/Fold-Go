@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
@@ -40,6 +39,7 @@ fun SettingsScreen(
     onNavigateToNotifications: (() -> Unit)? = null,
     onNavigateToAppearance: (() -> Unit)? = null,
     onNavigateToAddOns: (() -> Unit)? = null,
+    onNavigateToDeliveryFees: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: SettingsViewModel = koinViewModel()
 ) {
@@ -58,6 +58,9 @@ fun SettingsScreen(
         onNavigateToNotifications = onNavigateToNotifications,
         onNavigateToAppearance = onNavigateToAppearance,
         onNavigateToAddOns = onNavigateToAddOns,
+        onNavigateToDeliveryFees = onNavigateToDeliveryFees,
+        onAddDeliveryFee = viewModel::addDeliveryFee,
+        onRemoveDeliveryFee = viewModel::removeDeliveryFee,
         contentPadding = contentPadding
     )
 }
@@ -75,9 +78,13 @@ private fun SettingsContent(
     onNavigateToNotifications: (() -> Unit)? = null,
     onNavigateToAppearance: (() -> Unit)? = null,
     onNavigateToAddOns: (() -> Unit)? = null,
+    onNavigateToDeliveryFees: (() -> Unit)? = null,
+    onAddDeliveryFee: (Double) -> Unit,
+    onRemoveDeliveryFee: (Double) -> Unit,
     contentPadding: PaddingValues = PaddingValues()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeliveryFeesDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -175,10 +182,19 @@ private fun SettingsContent(
                             }
                         )
                         SettingsItem(
+                            icon = Icons.Rounded.LocalShipping,
+                            iconColor = Color(0xFFFF5722),
+                            title = "Delivery Fees",
+                            subtitle = "Manage standard delivery pricing",
+                            onClick = { 
+                                onNavigateToDeliveryFees?.invoke() ?: run { showDeliveryFeesDialog = true }
+                            }
+                        )
+                        SettingsItem(
                             icon = Icons.AutoMirrored.Rounded.Message,
                             iconColor = Color(0xFF673AB7),
                             title = "SMS Notifications",
-                            subtitle = "Credits and customer alerts",
+                            subtitle = if (uiState.smsCredits > 0) "${uiState.smsCredits} credits available" else "Credits and customer alerts",
                             onClick = {
                                 onNavigateToSMS?.invoke() ?: onFeatureNotAvailable("SMS Notifications")
                             }
@@ -322,6 +338,66 @@ private fun SettingsContent(
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            shape = RoundedCornerShape(28.dp)
+        )
+    }
+
+    if (showDeliveryFeesDialog) {
+        var newFee by remember { mutableStateOf("") }
+        
+        AlertDialog(
+            onDismissRequest = { showDeliveryFeesDialog = false },
+            title = { Text("Manage Delivery Fees") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Existing Fees", style = MaterialTheme.typography.labelMedium)
+                    
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        uiState.deliveryFees.forEach { fee ->
+                            InputChip(
+                                selected = false,
+                                onClick = { onRemoveDeliveryFee(fee) },
+                                label = { Text("P$fee") },
+                                trailingIcon = { Icon(Icons.Rounded.Close, null, modifier = Modifier.size(16.dp)) }
+                            )
+                        }
+                    }
+
+                    HorizontalDivider()
+
+                    OutlinedTextField(
+                        value = newFee,
+                        onValueChange = { newFee = it },
+                        label = { Text("Add New Fee") },
+                        prefix = { Text("₱") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val fee = newFee.toDoubleOrNull()
+                        if (fee != null) {
+                            onAddDeliveryFee(fee)
+                            newFee = ""
+                        }
+                    },
+                    enabled = newFee.isNotBlank()
+                ) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeliveryFeesDialog = false }) {
+                    Text("Close")
                 }
             },
             shape = RoundedCornerShape(28.dp)
@@ -502,7 +578,9 @@ fun SettingsScreenPreview() {
                 shop = null
             ),
             onLogout = {},
-            onEndShift = {}
+            onEndShift = {},
+            onAddDeliveryFee = {},
+            onRemoveDeliveryFee = {}
         )
     }
 }

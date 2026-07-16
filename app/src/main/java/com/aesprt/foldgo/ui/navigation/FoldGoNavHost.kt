@@ -22,6 +22,7 @@ import com.aesprt.foldgo.presentation.services.ServicesScreen
 import com.aesprt.foldgo.presentation.settings.AppearanceScreen
 import com.aesprt.foldgo.presentation.settings.NotificationSettingsScreen
 import com.aesprt.foldgo.presentation.settings.SMSSettingsScreen
+import com.aesprt.foldgo.presentation.settings.SubscriptionSelectionScreen
 import com.aesprt.foldgo.presentation.settings.SettingsScreen
 import com.aesprt.foldgo.presentation.shop.ShopInfoScreen
 import com.aesprt.foldgo.presentation.shop.ShopRegistrationScreen
@@ -88,6 +89,8 @@ object AppearanceRoute
 
 @Serializable
 object AddOnsRoute
+@Serializable
+object SMSPlanSelectionRoute
 
 @Composable
 fun FoldGoNavHost(
@@ -278,6 +281,13 @@ fun FoldGoNavHost(
 
         composable<SMSRoute> {
             SMSSettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPlanSelection = { navController.navigate(SMSPlanSelectionRoute) }
+            )
+        }
+
+        composable<SMSPlanSelectionRoute> {
+            SubscriptionSelectionScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

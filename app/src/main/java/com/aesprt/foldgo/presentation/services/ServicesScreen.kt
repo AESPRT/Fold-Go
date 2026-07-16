@@ -23,7 +23,11 @@ import com.aesprt.foldgo.domain.model.enums.ServiceType
 import com.aesprt.foldgo.presentation.components.FoldGoLoading
 import com.aesprt.foldgo.presentation.components.ModernBackground
 import com.aesprt.foldgo.presentation.order.components.ServiceAddDialog
+import com.aesprt.foldgo.ui.theme.DeepOceanBlue
 import com.aesprt.foldgo.ui.theme.FoldGoTheme
+import com.aesprt.foldgo.ui.theme.MintGreen
+import com.aesprt.foldgo.ui.theme.SurfaceLight
+import com.aesprt.foldgo.ui.theme.SurfaceVariantDark
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -143,8 +147,8 @@ fun ServicesScreenPreview() {
         ServicesContent(
             uiState = ServicesUiState(
                 services = listOf(
-                    Service("1", "shop1", "Wash & Dry", 5.0, "KG", 65.0, ServiceType.WASH_DRY),
-                    Service("2", "shop1", "Ironing", 1.0, "PCS", 25.0, ServiceType.IRON)
+                    Service("1", "shop1", "Wash & Dry", 5.0, "KG", 65.0, ServiceType.PER_KG),
+                    Service("2", "shop1", "Ironing", 1.0, "PCS", 25.0, ServiceType.PER_KG)
                 )
             ),
             onNavigateBack = {},
@@ -173,29 +177,20 @@ fun ServiceItem(service: Service, onDelete: () -> Unit) {
                 modifier = Modifier.size(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 color = when (service.type) {
-                    ServiceType.WASH -> Color(0xFF2196F3).copy(alpha = 0.1f)
-                    ServiceType.DRY -> Color(0xFFFF9800).copy(alpha = 0.1f)
-                    ServiceType.WASH_DRY -> Color(0xFF9C27B0).copy(alpha = 0.1f)
-                    ServiceType.IRON -> Color(0xFFE91E63).copy(alpha = 0.1f)
-                    ServiceType.OTHER -> Color(0xFF607D8B).copy(alpha = 0.1f)
+                    ServiceType.PER_KG -> MintGreen
+                    else -> DeepOceanBlue
                 }
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = when (service.type) {
-                            ServiceType.WASH -> Icons.Rounded.LocalLaundryService
-                            ServiceType.DRY -> Icons.Rounded.Air
-                            ServiceType.WASH_DRY -> Icons.Rounded.AllInclusive
-                            ServiceType.IRON -> Icons.Rounded.Iron
-                            ServiceType.OTHER -> Icons.Rounded.Category
+                            ServiceType.PER_KG -> Icons.Rounded.LocalLaundryService
+                            else -> Icons.Rounded.Category
                         },
                         contentDescription = null,
                         tint = when (service.type) {
-                            ServiceType.WASH -> Color(0xFF2196F3)
-                            ServiceType.DRY -> Color(0xFFFF9800)
-                            ServiceType.WASH_DRY -> Color(0xFF9C27B0)
-                            ServiceType.IRON -> Color(0xFFE91E63)
-                            ServiceType.OTHER -> Color(0xFF607D8B)
+                            ServiceType.PER_KG -> SurfaceVariantDark
+                            else -> SurfaceLight
                         },
                         modifier = Modifier.size(24.dp)
                     )
@@ -214,6 +209,7 @@ fun ServiceItem(service: Service, onDelete: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    val labels = if(service.type == ServiceType.BUNDLE) " ${service.defaultQuantity} kg" else " /${service.unit.lowercase()}"
                     Text(
                         text = PriceFormatter.format(service.pricePerUnit),
                         style = MaterialTheme.typography.bodyMedium,
@@ -221,7 +217,7 @@ fun ServiceItem(service: Service, onDelete: () -> Unit) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "/ ${service.unit.lowercase()}",
+                        text = labels,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

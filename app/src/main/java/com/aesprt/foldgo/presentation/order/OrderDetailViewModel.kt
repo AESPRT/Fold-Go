@@ -14,6 +14,7 @@ data class OrderDetailUiState(
     val machine: Machine? = null,
     val allMachines: List<Machine> = emptyList(),
     val availableAddOns: List<AddOn> = emptyList(),
+    val availableMachines: List<Machine> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
     val showSmsPrompt: Boolean = false,
@@ -26,6 +27,8 @@ class OrderDetailViewModel(
     private val getOrderByIdUseCase: GetOrderByIdUseCase,
     private val upsertOrderUseCase: UpsertOrderUseCase,
     private val getMachinesUseCase: GetMachinesUseCase,
+    private val assignMachineToOrderUseCase: AssignMachineToOrderUseCase,
+    private val updateMachineStatusUseCase: UpdateMachineStatusUseCase,
     private val sendSmsUseCase: SendSmsUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
@@ -59,12 +62,14 @@ class OrderDetailViewModel(
                 getMachinesUseCase()
             ) { order, machines ->
                 val machine = machines.find { it.machineId == order?.machineId || it.assignedOrderId == order?.orderId }
-                Pair(order, machine)
-            }.collect { (order, machine) ->
+                val availableMachines = machines.filter { it.status == MachineStatus.IDLE && it.assignedOrderId == null }
+                Triple(order, machine, availableMachines)
+            }.collect { (order, machine, available) ->
                 _uiState.update { 
                     it.copy(
                         order = order,
                         machine = machine,
+                        availableMachines = available,
                         isLoading = false
                     )
                 }
@@ -72,20 +77,32 @@ class OrderDetailViewModel(
         }
     }
 
-    fun updateOrderStatus(status: OrderStatus) {
+    fun assignMachine(machineId: String) {
         val currentOrder = uiState.value.order ?: return
         viewModelScope.launch {
+            // Update machine
+            assignMachineToOrderUseCase(machineId, currentOrder.orderId)
+            updateMachineStatusUseCase(machineId, MachineStatus.QUEUED.name)
+            
+            // Update order
             upsertOrderUseCase(currentOrder.copy(
-                status = status,
+                machineId = machineId,
+                status = OrderStatus.QUEUED,
                 updatedAt = System.currentTimeMillis()
             ))
+
+            // Send SMS
+            if (currentOrder.customerPhone.isNotBlank()) {
+                val message = "FoldGo JO#${currentOrder.orderNumber}\nStatus: QUEUED\nAssigned to ${uiState.value.availableMachines.find { it.machineId == machineId }?.name ?: "a machine"}. We will text you again once ready."
+                sendSmsUseCase(currentOrder.customerPhone, message, currentOrder.orderId)
+            }
         }
     }
 
     fun updateOrderPaymentAndDelivery(method: DeliveryMethod, amountPaid: Double) {
         val currentOrder = uiState.value.order ?: return
         viewModelScope.launch {
-            val deliveryFee = if (method == DeliveryMethod.DELIVERY) 50.0 else 0.0
+            val deliveryFee = currentOrder.deliveryFee
             val finalTotal = currentOrder.totalAmount + deliveryFee
             
             val change = (amountPaid - finalTotal).coerceAtLeast(0.0)
@@ -95,7 +112,6 @@ class OrderDetailViewModel(
             val paymentStatus = if (totalPaidSoFar >= finalTotal) PaymentStatus.PAID else PaymentStatus.PARTIAL
             
             val updatedOrder = currentOrder.copy(
-                status = OrderStatus.READY,
                 deliveryMethod = method,
                 paidAmount = totalPaidSoFar,
                 changeDue = change,
@@ -130,12 +146,12 @@ class OrderDetailViewModel(
         val order = uiState.value.pendingOrder ?: uiState.value.order ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isSendingSms = true) }
-            val result = sendSmsUseCase(order.customerPhone, message)
+            val result = sendSmsUseCase(order.customerPhone, message, order.orderId)
             if (result.isSuccess) {
-                preferenceManager.deductSmsCredit()
+                preferenceManager.deductSmsCredit() // Deducted in repository now
                 completePendingUpdate()
             } else {
-                _uiState.update { it.copy(isSendingSms = false, error = "Failed to send SMS. Please check internet connection.") }
+                _uiState.update { it.copy(isSendingSms = false, error = "Failed to send SMS: ${result.exceptionOrNull()?.message}") }
             }
         }
     }

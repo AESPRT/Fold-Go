@@ -75,7 +75,7 @@ fun QuantityPromptDialog(
 fun QuantityPromptDialogPreview() {
     FoldGoTheme {
         QuantityPromptDialog(
-            service = Service("1", "shop1", "Regular Wash", 1.0, "KG", 65.0, ServiceType.WASH),
+            service = Service("1", "shop1", "Regular Wash", 1.0, "KG", 65.0, ServiceType.PER_KG),
             onDismiss = {},
             onConfirm = {}
         )

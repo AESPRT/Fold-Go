@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,9 +31,8 @@ fun ServiceAddDialog(
     var qty by remember { mutableStateOf("1.0") }
     var unit by remember { mutableStateOf("KG") }
     var price by remember { mutableStateOf("") }
-    var serviceType by remember { mutableStateOf(ServiceType.WASH_DRY) }
+    var isBundle by remember { mutableStateOf(false) }
     var saveAsPreset by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     AlertDialog(
@@ -51,36 +52,47 @@ fun ServiceAddDialog(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
+                // Service Type Selection (Per Unit vs Bundle)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = serviceType.name.replace("_", " "),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Service Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor(
-                            type = ExposedDropdownMenuAnchorType.PrimaryEditable,
-                            enabled = true
-                        ).fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                    FilterChip(
+                        selected = !isBundle,
+                        onClick = { 
+                            isBundle = false 
+                            unit = "KG"
+                        },
+                        label = { Text("Per Unit (KG/PCS)") },
+                        leadingIcon = if (!isBundle) {
+                            { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                        } else null,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        ServiceType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.name.replace("_", " ")) },
-                                onClick = {
-                                    serviceType = type
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
+                    FilterChip(
+                        selected = isBundle,
+                        onClick = { 
+                            isBundle = true 
+                            unit = "KG"
+                        },
+                        label = { Text("Per Bundle") },
+                        leadingIcon = if (isBundle) {
+                            { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                        } else null,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
                 }
                 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -104,7 +116,7 @@ fun ServiceAddDialog(
                 OutlinedTextField(
                     value = price,
                     onValueChange = { price = it },
-                    label = { Text("Price per Unit", style = MaterialTheme.typography.bodyMedium) },
+                    label = { Text(if (isBundle) "Bundle Price" else "Price per Unit", style = MaterialTheme.typography.bodyMedium) },
                     prefix = { Text("₱", style = MaterialTheme.typography.bodyMedium) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
@@ -135,7 +147,7 @@ fun ServiceAddDialog(
                     val q = qty.toDoubleOrNull() ?: 1.0
                     val p = price.toDoubleOrNull() ?: 0.0
                     if (name.isNotBlank()) {
-                        onConfirm(name, q, unit, p, serviceType, saveAsPreset)
+                        onConfirm(name, q, unit, p, if (isBundle) ServiceType.BUNDLE else ServiceType.PER_KG, saveAsPreset)
                         onDismiss()
                     }
                 },
