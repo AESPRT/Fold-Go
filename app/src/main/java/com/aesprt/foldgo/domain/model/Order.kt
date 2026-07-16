@@ -14,6 +14,7 @@ data class Order(
     val orderNumber: String,
     val items: List<ServiceItem>,
     val totalAmount: Double,
+    val deliveryFee: Double = 0.0,
     val paidAmount: Double,
     val changeDue: Double = 0.0,
     val status: OrderStatus,

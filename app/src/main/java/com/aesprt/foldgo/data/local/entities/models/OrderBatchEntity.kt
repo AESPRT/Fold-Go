@@ -12,7 +12,7 @@ data class OrderBatchEntity(
     val machineId: String?,
     val weightKg: Double,
     val status: BatchStatus,
-    val serviceType: ServiceType = ServiceType.WASH_DRY,
+    val serviceType: ServiceType = ServiceType.PER_KG,
     val startTime: Long,
     val endTime: Long? = null
 )

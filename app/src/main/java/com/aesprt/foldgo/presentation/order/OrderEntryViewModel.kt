@@ -18,6 +18,7 @@ data class OrderEntryUiState(
     val phoneNumber: String = "",
     val phoneTextFieldValue: TextFieldValue = TextFieldValue(""),
     val customerAddress: String = "",
+    val suggestedCustomers: List<Customer> = emptyList(),
     val deliveryMethod: DeliveryMethod = DeliveryMethod.PICKUP,
     val selectedServiceIds: Set<String> = emptySet(),
     val weight: String = "5.0",
@@ -27,22 +28,38 @@ data class OrderEntryUiState(
     val selectedAddOns: List<AddOn> = emptyList(),
     val availableMachines: List<Machine> = emptyList(),
     val assignedMachine: Machine? = null,
+    val deliveryFee: String = "50.0",
+    val availableDeliveryFees: List<Double> = emptyList(),
     val isSaving: Boolean = false,
     val error: String? = null,
     val isSuccess: Boolean = false
 ) {
-    val servicesTotal: Double get() = selectedItems.sumOf { it.totalPrice }
+    val servicesTotal: Double get() = when {
+        selectedItems.isEmpty() -> 0.0
+        else -> {
+            selectedItems.sumOf { it.totalPrice }
+        }
+    }
     val addOnsTotal: Double get() = selectedAddOns.sumOf { it.price }
-    val totalAmount: Double get() = servicesTotal + addOnsTotal
+    val totalAmount: Double get() {
+        val base = servicesTotal + addOnsTotal
+        return if (deliveryMethod == DeliveryMethod.DELIVERY) {
+            base + (deliveryFee.toDoubleOrNull() ?: 0.0)
+        } else {
+            base
+        }
+    }
 }
 
 class OrderEntryViewModel(
     private val upsertOrderUseCase: UpsertOrderUseCase,
     private val getServicesUseCase: GetServicesUseCase,
-    private val upsertServiceUseCase: UpsertServiceUseCase,
     private val getMachinesUseCase: GetMachinesUseCase,
     private val assignMachineToOrderUseCase: AssignMachineToOrderUseCase,
     private val updateMachineStatusUseCase: UpdateMachineStatusUseCase,
+    private val sendSmsUseCase: SendSmsUseCase,
+    private val upsertCustomerUseCase: UpsertCustomerUseCase,
+    private val searchCustomersUseCase: SearchCustomersUseCase,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
 
@@ -53,6 +70,19 @@ class OrderEntryViewModel(
         loadServices()
         loadMachines()
         loadAddOns()
+        loadDeliveryFees()
+    }
+
+    private fun loadDeliveryFees() {
+        viewModelScope.launch {
+            preferenceManager.deliveryFees.collect { fees ->
+                _uiState.update { it.copy(availableDeliveryFees = fees) }
+            }
+        }
+    }
+
+    fun onDeliveryFeeChange(fee: String) {
+        _uiState.update { it.copy(deliveryFee = fee) }
     }
 
     private fun loadMachines() {
@@ -97,47 +127,40 @@ class OrderEntryViewModel(
             val shopId = preferenceManager.currentShopId.first() ?: return@launch
             _uiState.update { it.copy(shopId = shopId) }
             getServicesUseCase(shopId).collect { services ->
-                if (services.isEmpty()) {
-                    seedServices(shopId)
-                } else {
+                if (services.isNotEmpty()) {
                     _uiState.update { it.copy(availableServices = services) }
                 }
             }
         }
     }
 
-    private fun seedServices(shopId: String) {
-        viewModelScope.launch {
-            val defaultServices = listOf(
-                Service(IdGeneratorUtils.generateUniqueId("svc"), shopId, "Wash & Dry", 1.0, "KG", 65.0, ServiceType.WASH_DRY),
-                Service(IdGeneratorUtils.generateUniqueId("svc"), shopId, "Wash Only", 1.0, "KG", 45.0, ServiceType.WASH),
-                Service(IdGeneratorUtils.generateUniqueId("svc"), shopId, "Dry Only", 1.0, "KG", 40.0, ServiceType.DRY),
-                Service(IdGeneratorUtils.generateUniqueId("svc"), shopId, "Ironing", 1.0, "PCS", 25.0, ServiceType.IRON)
-            )
-            defaultServices.forEach { upsertServiceUseCase(it) }
-        }
-    }
-
-    fun addPredefinedService(name: String, qty: Double, unit: String, price: Double, type: ServiceType = ServiceType.WASH_DRY) {
-        val shopId = _uiState.value.shopId
-        if (shopId.isBlank()) return
-        
-        viewModelScope.launch {
-            val service = Service(
-                serviceId = IdGeneratorUtils.generateUniqueId("svc"),
-                shopId = shopId,
-                name = name,
-                defaultQuantity = qty,
-                unit = unit,
-                pricePerUnit = price,
-                type = type
-            )
-            upsertServiceUseCase(service)
-        }
-    }
-
     fun onCustomerNameChange(name: String) {
         _uiState.update { it.copy(customerName = name) }
+        searchCustomers(name)
+    }
+
+    private fun searchCustomers(query: String) {
+        if (query.length < 2) {
+            _uiState.update { it.copy(suggestedCustomers = emptyList()) }
+            return
+        }
+        viewModelScope.launch {
+            searchCustomersUseCase(query).collect { customers ->
+                _uiState.update { it.copy(suggestedCustomers = customers) }
+            }
+        }
+    }
+
+    fun selectCustomer(customer: Customer) {
+        _uiState.update { 
+            it.copy(
+                customerName = customer.name,
+                phoneNumber = customer.phone,
+                phoneTextFieldValue = TextFieldValue(customer.phone),
+                customerAddress = customer.address,
+                suggestedCustomers = emptyList()
+            )
+        }
     }
 
     fun onPhoneNumberChange(value: TextFieldValue) {
@@ -197,12 +220,17 @@ class OrderEntryViewModel(
             val newItems = state.availableServices
                 .filter { state.selectedServiceIds.contains(it.serviceId) }
                 .map { service ->
+                    val totalPrice = when {
+                        service.type == ServiceType.PER_KG -> weightDouble * service.pricePerUnit
+                        else -> service.pricePerUnit
+                    }
+
                     ServiceItem(
                         name = service.name,
                         quantity = weightDouble,
                         unit = service.unit,
                         pricePerUnit = service.pricePerUnit,
-                        totalPrice = weightDouble * service.pricePerUnit,
+                        totalPrice = totalPrice,
                         type = service.type
                     )
                 }
@@ -210,29 +238,12 @@ class OrderEntryViewModel(
         }
     }
 
-    fun addItem(name: String, quantity: Double, unit: String, pricePerUnit: Double, type: ServiceType = ServiceType.WASH_DRY) {
-        val newItem = ServiceItem(
-            name = name,
-            quantity = quantity,
-            unit = unit,
-            pricePerUnit = pricePerUnit,
-            totalPrice = quantity * pricePerUnit,
-            type = type
-        )
-        _uiState.update { it.copy(selectedItems = it.selectedItems + newItem) }
-    }
-
-    fun removeItem(item: ServiceItem) {
-        _uiState.update { it.copy(selectedItems = it.selectedItems - item) }
-    }
-
     fun saveOrder() {
         val currentState = _uiState.value
-        if (currentState.customerName.isBlank() || currentState.selectedItems.isEmpty() || currentState.assignedMachine == null) {
+        if (currentState.customerName.isBlank() || currentState.selectedItems.isEmpty()) {
             val errorMsg = when {
                 currentState.customerName.isBlank() -> "Customer name is required"
                 currentState.selectedItems.isEmpty() -> "Select at least one service item"
-                currentState.assignedMachine == null -> "Assign a machine to this order"
                 else -> "Please fill in all details"
             }
             _uiState.update { it.copy(error = errorMsg) }
@@ -264,12 +275,13 @@ class OrderEntryViewModel(
                     orderNumber = "FG-${System.currentTimeMillis().toString().takeLast(4)}",
                     items = currentState.selectedItems,
                     totalAmount = currentState.totalAmount,
+                    deliveryFee = if (currentState.deliveryMethod == DeliveryMethod.DELIVERY) currentState.deliveryFee.toDoubleOrNull() ?: 0.0 else 0.0,
                     paidAmount = 0.0,
-                    status = OrderStatus.INTAKE,
+                    status = if (currentState.assignedMachine != null) OrderStatus.QUEUED else OrderStatus.PENDING,
                     deliveryMethod = currentState.deliveryMethod,
                     paymentStatus = PaymentStatus.PENDING,
                     intakePhotos = emptyList(),
-                    machineId = currentState.assignedMachine.machineId,
+                    machineId = currentState.assignedMachine?.machineId,
                     staffId = staffId,
                     staffName = staffName,
                     selectedAddOns = currentState.selectedAddOns.map { 
@@ -280,11 +292,29 @@ class OrderEntryViewModel(
                 )
                 upsertOrderUseCase(order)
                 
-                // Persist machine assignment
-                assignMachineToOrderUseCase(currentState.assignedMachine.machineId, orderId)
+                // Persist machine assignment if any
+                currentState.assignedMachine?.let { machine ->
+                    assignMachineToOrderUseCase(machine.machineId, orderId)
+                    updateMachineStatusUseCase(machine.machineId, MachineStatus.QUEUED.name)
+                }
                 
-                // Update machine status to QUEUED
-                updateMachineStatusUseCase(currentState.assignedMachine.machineId, MachineStatus.QUEUED.name)
+                // Persist customer info
+                upsertCustomerUseCase(
+                    Customer(
+                        customerId = currentState.suggestedCustomers.find { it.name == currentState.customerName }?.customerId 
+                            ?: IdGeneratorUtils.generateUniqueId("cust"),
+                        name = currentState.customerName,
+                        phone = dbPhoneNumber,
+                        address = currentState.customerAddress
+                    )
+                )
+
+                // Send Confirmation SMS
+                if (order.customerPhone.isNotBlank()) {
+                    val statusText = if (order.status == OrderStatus.QUEUED) "QUEUED" else "PENDING (Waiting for Machine)"
+                    val message = "FoldGo JO#${order.orderNumber}\nAmt: P${order.totalAmount}\nStatus: $statusText\nWe will text you once your laundry is ready."
+                    sendSmsUseCase(order.customerPhone, message, order.orderId)
+                }
 
                 _uiState.update { it.copy(isSaving = false, isSuccess = true) }
             } catch (e: Exception) {

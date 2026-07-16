@@ -5,11 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.aesprt.foldgo.domain.model.Machine
 import com.aesprt.foldgo.domain.model.Order
 import com.aesprt.foldgo.domain.model.enums.OrderStatus
-import com.aesprt.foldgo.domain.repository.MachineRepository
-import com.aesprt.foldgo.domain.repository.OrderRepository
 import com.aesprt.foldgo.domain.usecase.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 
 data class OrderWithMachine(
     val order: Order,
@@ -25,10 +22,8 @@ data class DashboardUiState(
 )
 
 class DashboardViewModel(
-    private val getAllOrdersUseCase: GetAllOrdersUseCase,
-    private val getMachinesUseCase: GetMachinesUseCase,
-    private val finishMachineCycleUseCase: FinishMachineCycleUseCase,
-    private val upsertOrderUseCase: UpsertOrderUseCase
+    getAllOrdersUseCase: GetAllOrdersUseCase,
+    getMachinesUseCase: GetMachinesUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<DashboardUiState> = combine(
@@ -52,30 +47,4 @@ class DashboardViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = DashboardUiState(isLoading = true)
         )
-
-    fun autoFinishCycle(machineId: String, orderId: String) {
-        viewModelScope.launch {
-            finishMachineCycleUseCase(machineId)
-            val orders = getAllOrdersUseCase().first()
-            val associatedOrder = orders.find { it.machineId == machineId && it.orderId == orderId && (it.status == OrderStatus.WASHING_AND_DRYING ||it.status == OrderStatus.WASHING || it.status == OrderStatus.DRYING) }
-            associatedOrder?.let { order ->
-                val nextStatus = when (order.status) {
-                    OrderStatus.WASHING_AND_DRYING -> {
-                        OrderStatus.WASHED_AND_DRIED
-                    }
-                    OrderStatus.WASHING -> {
-                        OrderStatus.WASHED
-                    }
-                    else -> {
-                        OrderStatus.DRIED
-                    }
-                }
-                upsertOrderUseCase(order.copy(
-                    status = nextStatus,
-                    machineId = null,
-                    updatedAt = System.currentTimeMillis()
-                ))
-            }
-        }
-    }
 }

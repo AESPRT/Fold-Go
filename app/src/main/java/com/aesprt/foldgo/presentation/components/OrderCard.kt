@@ -135,7 +135,7 @@ fun OrderCardPreview() {
                     items = emptyList(),
                     totalAmount = 25.0,
                     paidAmount = 0.0,
-                    status = OrderStatus.INTAKE,
+                    status = OrderStatus.QUEUED,
                     intakePhotos = emptyList(),
                     machineId = null,
                     staffId = "staff1",
@@ -154,7 +154,7 @@ fun OrderCardPreview() {
 fun StatusChipPreview() {
     FoldGoTheme {
         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatusChip(status = OrderStatus.INTAKE)
+            StatusChip(status = OrderStatus.QUEUED)
             StatusChip(status = OrderStatus.WASHING)
             StatusChip(status = OrderStatus.READY)
         }

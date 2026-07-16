@@ -9,5 +9,5 @@ data class Service(
     val defaultQuantity: Double,
     val unit: String,
     val pricePerUnit: Double,
-    val type: ServiceType = ServiceType.WASH_DRY
+    val type: ServiceType = ServiceType.PER_KG
 )

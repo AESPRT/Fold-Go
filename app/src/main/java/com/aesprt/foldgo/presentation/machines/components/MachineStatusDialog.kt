@@ -54,7 +54,7 @@ fun MachineStatusDialog(
                         ) {
                             Icon(Icons.Rounded.Warning, contentDescription = null, tint = IntakeAmber)
                             Text(
-                                "No order assigned to this machine. Create a new order and assign it here before updating status.",
+                                "No order assigned to this machine. Go to Dashboard and select a pending order to assign.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = IntakeAmber
                             )
@@ -86,7 +86,7 @@ fun MachineStatusDialog(
                         StatusOption(
                             title = "Folding",
                             subtitle = "Staff is currently folding",
-                            icon = Icons.Rounded.Iron,
+                            icon = Icons.Rounded.DryCleaning,
                             color = Color(0xFF9C27B0),
                             onClick = { onStatusChange(MachineStatus.FOLDING) }
                         )
