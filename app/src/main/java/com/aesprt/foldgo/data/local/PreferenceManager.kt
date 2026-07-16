@@ -4,8 +4,12 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.aesprt.foldgo.data.local.dao.SmsDao
 import com.aesprt.foldgo.domain.repository.ShopRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -13,7 +17,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class PreferenceManager(
     private val context: Context,
-    private val shopRepository: ShopRepository
+    private val shopRepository: ShopRepository,
+    private val smsDao: SmsDao
 ) {
 
     companion object {
@@ -26,9 +31,6 @@ class PreferenceManager(
         const val SMS_ENABLED_KEY = "sms_enabled"
         const val NOTIFICATIONS_ENABLED_KEY = "notifications_enabled"
         const val DARK_MODE_ENABLED_KEY = "dark_mode_enabled"
-        const val SMS_CREDITS_KEY = "sms_credits"
-        const val SMS_PLAN_NAME_KEY = "sms_plan_name"
-        const val SMS_BILLING_CYCLE_END_KEY = "sms_billing_cycle_end"
         const val DELIVERY_FEES_KEY = "delivery_fees"
     }
 
@@ -121,42 +123,11 @@ class PreferenceManager(
         shopRepository.upsertShop(shop.copy(settings = updatedSettings))
     }
 
-    val smsCredits: Flow<Int> = shopRepository.getFirstShop()
-        .map { it?.settings?.get(SMS_CREDITS_KEY)?.toIntOrNull() ?: 0 }
-
-    suspend fun setSmsCredits(credits: Int) {
-        val shop = shopRepository.getFirstShop().first() ?: return
-        val updatedSettings = shop.settings.toMutableMap().apply {
-            put(SMS_CREDITS_KEY, credits.toString())
-        }
-        shopRepository.upsertShop(shop.copy(settings = updatedSettings))
-    }
-
-    val smsPlanName: Flow<String?> = shopRepository.getFirstShop()
-        .map { it?.settings?.get(SMS_PLAN_NAME_KEY) }
-
-    val smsBillingCycleEnd: Flow<Long?> = shopRepository.getFirstShop()
-        .map { it?.settings?.get(SMS_BILLING_CYCLE_END_KEY)?.toLongOrNull() }
-
-    suspend fun updateSubscriptionSettings(planName: String, credits: Int, billingCycleEnd: Long) {
-        val shop = shopRepository.getFirstShop().first() ?: return
-        val updatedSettings = shop.settings.toMutableMap().apply {
-            put(SMS_PLAN_NAME_KEY, planName)
-            put(SMS_CREDITS_KEY, credits.toString())
-            put(SMS_BILLING_CYCLE_END_KEY, billingCycleEnd.toString())
-        }
-        shopRepository.upsertShop(shop.copy(settings = updatedSettings))
-    }
-
-    suspend fun deductSmsCredit() {
-        val shop = shopRepository.getFirstShop().first() ?: return
-        val current = shop.settings[SMS_CREDITS_KEY]?.toIntOrNull() ?: 0
-        if (current > 0) {
-            val updatedSettings = shop.settings.toMutableMap().apply {
-                put(SMS_CREDITS_KEY, (current - 1).toString())
-            }
-            shopRepository.upsertShop(shop.copy(settings = updatedSettings))
-        }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val smsCredits: Flow<Int> = currentShopId.flatMapLatest { id ->
+        if (id != null) {
+            smsDao.getSubscription(id).map { it?.let { sub -> sub.allocatedSms - sub.usedSms } ?: 0 }
+        } else flowOf(0)
     }
 
     val deliveryFees: Flow<List<Double>> = shopRepository.getFirstShop()

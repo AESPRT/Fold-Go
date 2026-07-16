@@ -229,7 +229,8 @@ fun MachineMatrixTabletContent(
 
             MachineFilterSection(
                 selectedStatus = null,
-                onStatusSelected = onFilterStatusChanged
+                onStatusSelected = onFilterStatusChanged,
+                isWrap = true
             )
 
             if (uiState.isLoading) {

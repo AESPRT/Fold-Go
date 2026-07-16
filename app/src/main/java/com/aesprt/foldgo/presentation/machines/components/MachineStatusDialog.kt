@@ -1,5 +1,6 @@
 package com.aesprt.foldgo.presentation.machines.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -124,9 +125,7 @@ fun MachineStatusDialog(
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color(0xFFF44336)
                         ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
-                            brush = SolidColor(Color(0xFFF44336))
-                        )
+                        border = BorderStroke(width = 1.dp, brush = SolidColor(Color(0xFFF44336)))
                     ) {
                         Text("Out of Order", fontWeight = FontWeight.Bold)
                     }

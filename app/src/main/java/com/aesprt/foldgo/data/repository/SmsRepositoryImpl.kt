@@ -10,7 +10,10 @@ import com.aesprt.foldgo.data.remote.SmsService
 import com.aesprt.foldgo.domain.model.SmsSubscription
 import com.aesprt.foldgo.domain.model.SmsTransactionLog
 import com.aesprt.foldgo.domain.repository.SmsRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlin.math.ceil
@@ -68,21 +71,17 @@ class SmsRepositoryImpl(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun getSubscription(): Flow<SmsSubscription?> {
-        return preferenceManager.currentShopId.map { shopId ->
+        return preferenceManager.currentShopId.flatMapLatest { shopId ->
             if (shopId != null) {
-                smsDao.getSubscription(shopId).first()?.toDomain()
-            } else null
+                smsDao.getSubscription(shopId).map { it?.toDomain() }
+            } else flowOf(null)
         }
     }
 
     override suspend fun updateSubscription(subscription: SmsSubscription) {
         smsDao.upsertSubscription(subscription.toEntity())
-        preferenceManager.updateSubscriptionSettings(
-            planName = subscription.planName,
-            credits = subscription.allocatedSms - subscription.usedSms,
-            billingCycleEnd = subscription.billingCycleEnd
-        )
     }
 
     override fun getLogs(): Flow<List<SmsTransactionLog>> {
